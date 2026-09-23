@@ -43,3 +43,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# local agent workspace and secrets
+/data/
+/server/.env

@@ -1,183 +1,161 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Share, StatusBar, Text, TextInput, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StatusBar, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { complete, isThisWeek, isToday, Plan, remaining, State, starter, uid } from './src/model';
-import { demoDraft, Draft, generateDraft, makePlan } from './src/planner';
-import { clear, load, save } from './src/storage';
-import { C, s } from './src/styles';
+import { Orb } from './src/Orb';
+import { AgentEvent, AgentRun, Health } from './src/types';
+import { cancelRun, checkHealth, decideRun, defaultEndpoint, getFile, getFiles, getRun, startRun } from './src/api';
+import { demoAdvance, demoDecide, demoStart } from './src/demo';
+import { C, s } from './src/theme';
 
-type Tab = '今天' | '专注' | '回顾' | '我的';
+type Page = 'home' | 'agent' | 'workspace' | 'settings';
 type IconName = keyof typeof Feather.glyphMap;
-const tabs: { label: Tab; icon: IconName }[] = [
-  { label: '今天', icon: 'home' }, { label: '专注', icon: 'circle' },
-  { label: '回顾', icon: 'bar-chart-2' }, { label: '我的', icon: 'user' },
+const nav: { id: Page; title: string; icon: IconName }[] = [
+  { id: 'home', title: '总览', icon: 'grid' }, { id: 'agent', title: 'Agent', icon: 'command' },
+  { id: 'workspace', title: '工作区', icon: 'folder' }, { id: 'settings', title: '设置', icon: 'sliders' },
 ];
-const categories = {
-  工作: { icon: 'briefcase', bg: '#EDE9FF', color: '#6855CB' },
-  生活: { icon: 'coffee', bg: '#FFEDE5', color: '#DC8866' },
-  学习: { icon: 'book-open', bg: '#DFF5EB', color: '#3B9A73' },
-  其他: { icon: 'star', bg: '#E9EFFB', color: '#6C8CC6' },
-} as const;
-function Icon({ name, size = 20, color = C.ink }: { name: IconName; size?: number; color?: string }) {
+const prompts = [
+  { icon: 'file-text' as IconName, title: '制作简报', text: '读取工作区资料，提炼要点，生成一份简洁的中文简报。', hue: '#78BAFF' },
+  { icon: 'compass' as IconName, title: '规划项目', text: '分析工作区内容，制定清晰的项目执行计划并保存。', hue: '#B79CFF' },
+  { icon: 'search' as IconName, title: '定位信息', text: '在工作区文件里找到关键问题、相关事实和下一步建议。', hue: '#64DAC5' },
+];
+const eventIcon: Record<AgentEvent['kind'], IconName> = {
+  thinking: 'loader', tool: 'terminal', success: 'check', approval: 'shield',
+  denied: 'x', final: 'star', error: 'alert-triangle',
+};
+const eventColor: Record<AgentEvent['kind'], string> = {
+  thinking: '#8ABEFF', tool: '#AF9CFF', success: '#62DABC', approval: '#FFCC83',
+  denied: '#FF8A91', final: '#7BB6FF', error: '#FF8A91',
+};
+function I({ name, size = 18, color = C.text }: { name: IconName; size?: number; color?: string }) {
   return <Feather name={name} size={size} color={color} />;
 }
-function Section({ title, right }: { title: string; right?: string }) {
-  return <View style={s.sectionHead}><Text style={s.sectionTitle}>{title}</Text><Text style={s.sectionRight}>{right}</Text></View>;
+function Badge({ label, color = C.blue }: { label: string; color?: string }) {
+  return <View style={[s.badge, { borderColor: color + '55' }]}><View style={[s.badgeDot, { backgroundColor: color }]} /><Text style={[s.badgeText, { color }]}>{label}</Text></View>;
 }
-function Primary({ label, onPress, icon, disabled = false }: { label: string; onPress: () => void; icon?: IconName; disabled?: boolean }) {
-  return <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress} style={[s.primary, disabled && { opacity: .5 }]}>
-    <Text style={s.primaryText}>{label}</Text>{icon && <Icon name={icon} size={18} color="white" />}
-  </Pressable>;
-}
-function PlanCard({ plan, toggle, focus }: { plan: Plan; toggle: (id: string) => void; focus: () => void }) {
-  const cat = categories[plan.category];
-  return <View style={s.planCard}>
-    <View style={s.planTop}><View style={[s.categoryIcon, { backgroundColor: cat.bg }]}><Icon name={cat.icon} size={19} color={cat.color} /></View>
-      <View style={{ flex: 1 }}><Text style={s.planTitle}>{plan.title}</Text><Text style={s.planMeta}>{plan.category} · {plan.minutes} 分钟 · {plan.source === 'ai' ? 'AI 整理' : '演示整理'}</Text></View>
-      {complete(plan) && <Icon name="check-circle" color="#52B990" size={20} />}
-    </View>
-    <Text style={s.planSummary}>{plan.summary}</Text><View style={s.divider} />
-    {plan.steps.map((step, index) => <Pressable key={step.id} accessibilityRole="checkbox" accessibilityState={{ checked: step.done }} onPress={() => toggle(step.id)} style={s.stepRow}>
-      <View style={[s.checkbox, step.done && s.checkboxDone]}>{step.done && <Icon name="check" size={12} color="white" />}</View>
-      <Text style={[s.stepText, step.done && s.strike]}>{step.title}</Text>
-      {index === 0 && !step.done && <Text style={s.startTag}>从这里开始</Text>}
-    </Pressable>)}
-    {!complete(plan) && <Pressable onPress={focus} style={s.focusLink}><Icon name="play" size={13} color={C.purple} /><Text style={s.focusLinkText}>开始专注 →</Text></Pressable>}
+function EventRow({ event, last }: { event: AgentEvent; last: boolean }) {
+  const color = eventColor[event.kind];
+  return <View style={s.eventRow}><View style={s.timeline}><View style={[s.eventIcon, { borderColor: color + '66', backgroundColor: color + '1E' }]}><I name={eventIcon[event.kind]} size={14} color={color} /></View>{!last && <View style={s.timelineLine} />}</View>
+    <View style={s.eventBody}><View style={s.eventHeading}><Text style={s.eventTitle}>{event.title}</Text><Text style={s.eventTime}>{new Date(event.at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</Text></View>{!!event.detail && <Text style={s.eventDetail}>{event.detail}</Text>}</View>
   </View>;
 }
-function MainApp() {
-  const [state, setState] = useState<State>(starter);
-  const [ready, setReady] = useState(false);
-  const [tab, setTab] = useState<Tab>('今天');
-  const [capture, setCapture] = useState(false);
-  const [raw, setRaw] = useState('');
-  const [draft, setDraft] = useState<Draft | null>(null);
-  const [source, setSource] = useState<Plan['source']>('demo');
+function AppContent() {
+  const { width } = useWindowDimensions();
+  const desktop = width >= 900;
+  const [page, setPage] = useState<Page>('home');
+  const [mode, setMode] = useState<'preview' | 'local'>('preview');
+  const [endpoint, setEndpoint] = useState(defaultEndpoint);
+  const [editedEndpoint, setEditedEndpoint] = useState(defaultEndpoint);
+  const [pair, setPair] = useState('');
+  const [editedPair, setEditedPair] = useState('');
+  const [health, setHealth] = useState<Health | null>(null);
+  const [run, setRun] = useState<AgentRun | null>(null);
+  const [prompt, setPrompt] = useState('');
+  const [files, setFiles] = useState<string[]>([]);
+  const [openFile, setOpenFile] = useState<{ name: string; content: string } | null>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [seconds, setSeconds] = useState(25 * 60);
-  const [running, setRunning] = useState(false);
-  const [sessionDone, setSessionDone] = useState(false);
-
-  useEffect(() => { load().then(setState).catch(() => Alert.alert('读取失败', '暂时无法读取本机数据。')).finally(() => setReady(true)); }, []);
-  useEffect(() => { if (ready) save(state).catch(() => Alert.alert('保存失败', '请检查设备存储空间。')); }, [state, ready]);
-  const plans = state.plans;
-  const active = plans.filter(p => !complete(p));
-  const finished = plans.filter(complete);
-  const current = active.find(p => p.id === selectedId) ?? active[0];
-  const todayCount = plans.filter(p => isToday(p.createdAt)).length;
-  const weekSessions = state.sessions.filter(x => isThisWeek(x.endedAt));
-  const focusMinutes = weekSessions.reduce((n, x) => n + x.minutes, 0);
-  const weekCompleted = finished.filter(p => isThisWeek(p.completedAt ?? p.createdAt)).length;
+  const [notice, setNotice] = useState('');
+  useEffect(() => { AsyncStorage.getItem('@nova/endpoint').then(x => { if (x) { setEndpoint(x); setEditedEndpoint(x); } }).catch(() => {}); }, []);
   useEffect(() => {
-    if (!running) return;
-    const timer = setInterval(() => setSeconds(n => Math.max(0, n - 1)), 1000);
+    if (!run?.id || mode !== 'local' || !['thinking', 'approval', 'resuming'].includes(run.status)) return;
+    const timer = setInterval(() => getRun(endpoint, pair, run.id).then(setRun).catch(e => setNotice(e.message)), 850);
     return () => clearInterval(timer);
-  }, [running]);
+  }, [run?.id, run?.status, mode, endpoint, pair]);
   useEffect(() => {
-    if (seconds !== 0 || !running || !current) return;
-    setRunning(false); setSessionDone(true);
-    setState(prev => ({ ...prev, sessions: [{ id: uid(), planId: current.id, minutes: current.minutes, endedAt: new Date().toISOString() }, ...prev.sessions] }));
-  }, [seconds, running, current?.id]);
-  function toggle(planId: string, stepId: string) {
-    setState(prev => ({ ...prev, plans: prev.plans.map(p => {
-      if (p.id !== planId) return p;
-      const steps = p.steps.map(x => x.id === stepId ? { ...x, done: !x.done } : x);
-      return { ...p, steps, completedAt: steps.every(x => x.done) ? (p.completedAt ?? new Date().toISOString()) : undefined };
-    }) }));
-  }
-  function resetCapture() { setCapture(false); setRaw(''); setDraft(null); setError(''); setBusy(false); }
-  async function organize(mode: Plan['source']) {
-    if (raw.trim().length < 5) { setError('至少写 5 个字，描述你脑中的那件事。'); return; }
-    if (raw.length > 1200) { setError('最多输入 1200 个字符。'); return; }
-    setBusy(true); setError('');
-    try { setDraft(mode === 'ai' ? await generateDraft(raw.trim()) : demoDraft(raw.trim())); setSource(mode); }
-    catch (e) { setError(e instanceof Error ? e.message : '整理失败，请重试'); }
+    if (mode !== 'preview' || !run || run.status !== 'thinking') return;
+    const a = setTimeout(() => setRun(prev => prev?.status === 'thinking' ? demoAdvance(prev, 1) : prev), 850);
+    const b = setTimeout(() => setRun(prev => prev?.status === 'thinking' ? demoAdvance(prev, 2) : prev), 1750);
+    const c = setTimeout(() => setRun(prev => prev?.status === 'thinking' ? demoAdvance(prev, 3) : prev), 2800);
+    return () => { clearTimeout(a); clearTimeout(b); clearTimeout(c); };
+  }, [run?.id, mode]);
+  const active = run && ['thinking', 'approval', 'resuming'].includes(run.status);
+  const modelLabel = mode === 'preview' ? 'INTERACTIVE PREVIEW' : health?.modelReady ? 'LOCAL MODEL ONLINE' : health?.online ? 'MODEL NOT READY' : 'LOCAL OFFLINE';
+  const modelColor = mode === 'preview' ? '#C8A6FF' : health?.modelReady ? C.green : C.amber;
+  const jump = (text: string) => { setPrompt(text); setPage('agent'); };
+  async function connect() {
+    setBusy(true); setNotice('');
+    try {
+      const url = editedEndpoint.trim().replace(/\/$/, '');
+      if (!/^https?:\/\//.test(url)) throw new Error('请输入完整地址，例如 http://192.168.1.10:8787');
+      const status = await checkHealth(url);
+      const result = await getFiles(url, editedPair.trim());
+      setEndpoint(url); setPair(editedPair.trim()); setHealth(status); setFiles(result.files);
+      setMode('local'); await AsyncStorage.setItem('@nova/endpoint', url);
+      setNotice(status.modelReady ? '已连接到本地模型和工作区' : '已连接服务端，但尚未找到指定的 Ollama 模型');
+    } catch (e) { setNotice(e instanceof Error ? e.message : '连接失败'); }
     finally { setBusy(false); }
   }
-  function addPlan() {
-    if (!draft?.title.trim() || draft.steps.some(x => !x.trim())) { setError('请填写标题和每一步的内容。'); return; }
-    const plan = makePlan(raw, draft, source);
-    setState(prev => ({ ...prev, plans: [plan, ...prev.plans] }));
-    resetCapture(); setTab('今天');
+  async function refreshFiles() {
+    if (mode === 'preview') return;
+    try { setFiles((await getFiles(endpoint, pair)).files); } catch (e) { setNotice(e instanceof Error ? e.message : '读取失败'); }
   }
-  function focusOn(plan: Plan) { setSelectedId(plan.id); setSeconds(plan.minutes * 60); setRunning(false); setSessionDone(false); setTab('专注'); }
-  async function exportData() {
-    try { await Share.share({ title: '片刻 · 我的数据', message: JSON.stringify({ exportedAt: new Date().toISOString(), ...state }, null, 2) }); }
-    catch { Alert.alert('导出失败', '暂时无法打开系统分享菜单。'); }
+  async function viewFile(name: string) {
+    if (mode === 'preview') { setOpenFile({ name, content: '这是交互预览中的示例文档。连接你电脑上的本地服务后，这里会显示真实文件内容。' }); return; }
+    try { setOpenFile(await getFile(endpoint, pair, name)); } catch (e) { setNotice(e instanceof Error ? e.message : '读取失败'); }
   }
-  function deleteData() {
-    Alert.alert('清除所有数据？', '已保存的整理和专注记录会从这台设备删除，无法撤销。', [
-      { text: '取消', style: 'cancel' },
-      { text: '全部清除', style: 'destructive', onPress: async () => { try { await clear(); setState({ plans: [], sessions: [] }); setRunning(false); setSeconds(25 * 60); setSelectedId(null); } catch { Alert.alert('清除失败', '请稍后重试。'); } } },
-    ]);
+  async function submit() {
+    if (prompt.trim().length < 3) { setNotice('请至少输入 3 个字符。'); return; }
+    setNotice(''); setBusy(true);
+    try {
+      setRun(mode === 'preview' ? demoStart(prompt.trim()) : await startRun(endpoint, pair, prompt.trim()));
+      setPrompt('');
+    } catch (e) { setNotice(e instanceof Error ? e.message : '任务启动失败'); }
+    finally { setBusy(false); }
   }
-  const greeting = new Date().getHours() < 11 ? '早上好' : new Date().getHours() < 18 ? '下午好' : '晚上好';
-  const day = new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' }).format(new Date());
-  const days = useMemo(() => Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(); date.setHours(0, 0, 0, 0); date.setDate(date.getDate() - 6 + index);
-    const count = state.sessions.filter(x => { const d = new Date(x.endedAt); return d.getFullYear() === date.getFullYear() && d.getMonth() === date.getMonth() && d.getDate() === date.getDate(); }).reduce((n, x) => n + x.minutes, 0);
-    return { name: ['日', '一', '二', '三', '四', '五', '六'][date.getDay()], count };
-  }), [state.sessions]);
-  if (!ready) return <View style={s.loading}><ActivityIndicator color={C.purple} /></View>;
-  return <SafeAreaView style={s.safe} edges={['top', 'bottom']}><StatusBar barStyle="dark-content" backgroundColor={C.bg} /><View style={s.shell}>
-    <ScrollView key={tab} showsVerticalScrollIndicator={false} contentContainerStyle={s.page} keyboardShouldPersistTaps="handled">
-      {tab === '今天' && <>
-        <View style={s.topBar}><View style={s.brand}><View style={s.brandMark}><Icon name="aperture" size={20} color="white" /></View><Text style={s.brandText}>片刻 <Text style={{ fontWeight: '400' }}>PIANKE</Text></Text></View><View style={s.avatar}><Icon name="smile" size={20} color={C.purple} /></View></View>
-        <Text style={s.date}>{day} · {greeting}</Text><Text style={s.headline}>慢一点，<Text style={{ color: C.purple }}>也能向前。</Text></Text>
-        <LinearGradient colors={['#7564F1', '#5144C9']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.hero}>
-          <View style={s.heroOrbit} /><View style={s.heroOrbit2} /><View style={s.heroPill}><Icon name="star" size={13} color="#E9E2FF" /><Text style={s.heroPillText}>AI 思绪整理</Text></View>
-          <Text style={s.heroTitle}>脑袋太满了？{'\n'}先把事情放下来。</Text><Text style={s.heroSub}>写下来，让 AI 帮你找到第一步。</Text>
-          <Pressable onPress={() => setCapture(true)} style={s.heroButton}><Text style={s.heroButtonText}>开始整理</Text><Icon name="arrow-up-right" size={17} color={C.purple} /></Pressable>
-        </LinearGradient>
-        <View style={s.statGrid}><View style={s.statCard}><View style={[s.statIcon, { backgroundColor: '#EEEAFE' }]}><Icon name="layers" color={C.purple} size={18} /></View><Text style={s.statNum}>{todayCount}<Text style={s.statUnit}> 件</Text></Text><Text style={s.statLabel}>今天已整理</Text></View>
-          <View style={s.statCard}><View style={[s.statIcon, { backgroundColor: '#E0F5E9' }]}><Icon name="check" color="#4AAE82" size={18} /></View><Text style={s.statNum}>{finished.length}<Text style={s.statUnit}> 件</Text></Text><Text style={s.statLabel}>累计完成</Text></View></View>
-        <Section title="进行中的事" right={`${active.length} 件待完成`} />
-        {active.length === 0 ? <View style={s.empty}><View style={s.emptyIcon}><Icon name="wind" size={25} color={C.purple} /></View><Text style={s.emptyTitle}>给脑袋留一点空白</Text><Text style={s.emptyBody}>想到什么，就从上面的入口写下来。{'\n'}一次只做一件事。</Text></View> : active.map(p => <PlanCard key={p.id} plan={p} toggle={id => toggle(p.id, id)} focus={() => focusOn(p)} />)}
-        {finished.length > 0 && <><Section title="已经做到的" right={`${finished.length} 件`} />{finished.slice(0, 3).map(p => <PlanCard key={p.id} plan={p} toggle={id => toggle(p.id, id)} focus={() => focusOn(p)} />)}</>}
-      </>}
-      {tab === '专注' && <>
-        <View style={s.simpleTop}><Text style={s.eyebrow}>FOCUS MODE</Text><Text style={s.screenTitle}>把注意力，<Text style={{ color: C.purple }}>还给当下。</Text></Text><Text style={s.screenSub}>选一件事，给它一段不被打扰的时间。</Text></View>
-        {active.length === 0 ? <View style={s.empty}><View style={s.emptyIcon}><Icon name="target" size={26} color={C.purple} /></View><Text style={s.emptyTitle}>还没有待完成的事</Text><Text style={s.emptyBody}>整理一个想法，再来这里专注完成。</Text><Pressable onPress={() => setCapture(true)} style={s.textButton}><Text style={s.textButtonLabel}>整理一个想法 →</Text></Pressable></View> : <>
-          <View style={s.focusCard}><Text style={s.focusOverline}>正在专注于</Text><Text style={s.focusTitle}>{current?.title}</Text><View style={s.timerRing}><Text style={s.timer}>{String(Math.floor(seconds / 60)).padStart(2, '0')}:{String(seconds % 60).padStart(2, '0')}</Text><Text style={s.timerHint}>{sessionDone ? '这一段时间属于你 ✓' : running ? '保持节奏，慢慢来' : '准备好了就开始'}</Text></View>
-            <View style={s.timerButtons}><Pressable onPress={() => { setRunning(false); setSeconds((current?.minutes ?? 25) * 60); setSessionDone(false); }} style={s.resetButton}><Icon name="rotate-ccw" size={18} color={C.purple} /></Pressable>
-              <Pressable onPress={() => { if (seconds === 0) { setSeconds((current?.minutes ?? 25) * 60); setSessionDone(false); } setRunning(!running); }} style={s.playButton}><Icon name={running ? 'pause' : 'play'} size={22} color="white" /><Text style={s.playText}>{running ? '暂停' : sessionDone ? '再来一次' : '开始专注'}</Text></Pressable></View>
-          </View><Section title="选择专注的事" right={`${active.length} 个选择`} />
-          {active.map(p => <Pressable key={p.id} onPress={() => focusOn(p)} style={[s.selectCard, current?.id === p.id && s.selectCardActive]}><View style={[s.categoryIcon, { backgroundColor: categories[p.category].bg }]}><Icon name={categories[p.category].icon} size={18} color={categories[p.category].color} /></View><View style={{ flex: 1 }}><Text style={s.selectTitle} numberOfLines={1}>{p.title}</Text><Text style={s.planMeta}>还剩 {remaining(p)} 步 · {p.minutes} 分钟</Text></View><Icon name={current?.id === p.id ? 'check-circle' : 'circle'} color={C.purple} size={20} /></Pressable>)}
+  async function decide(approved: boolean) {
+    if (!run) return;
+    setBusy(true);
+    try { setRun(mode === 'preview' ? demoDecide(run, approved) : await decideRun(endpoint, pair, run.id, approved)); if (approved) setTimeout(refreshFiles, 900); }
+    catch (e) { setNotice(e instanceof Error ? e.message : '审批失败'); }
+    finally { setBusy(false); }
+  }
+  async function cancel() {
+    if (!run) return;
+    try { setRun(mode === 'preview' ? { ...run, status: 'cancelled', pending: null } : await cancelRun(endpoint, pair, run.id)); }
+    catch (e) { setNotice(e instanceof Error ? e.message : '停止失败'); }
+  }
+  const sidebar = <View style={s.sidebar}><View style={s.logoRow}><LinearGradient colors={['#75C5FF', '#507AFF']} style={s.logo}><Text style={s.logoN}>N</Text></LinearGradient><View><Text style={s.logoText}>NOVA</Text><Text style={s.logoCaption}>LOCAL AGENT STUDIO</Text></View></View>
+    <Text style={s.navCaption}>WORKSPACE</Text>{nav.map(item => <Pressable key={item.id} onPress={() => { setPage(item.id); if (item.id === 'workspace') void refreshFiles(); }} style={[s.sideNav, page === item.id && s.sideNavActive]}><I name={item.icon} size={18} color={page === item.id ? C.blue : C.dim} /><Text style={[s.sideNavText, page === item.id && { color: C.text }]}>{item.title}</Text>{page === item.id && <View style={s.navAccent} />}</Pressable>)}
+    <View style={s.sideBottom}><View style={s.divider} /><Badge label={modelLabel} color={modelColor} /><Text style={s.sideSmall}>{mode === 'preview' ? '交互预览 · 不修改真实文件' : `模型 ${health?.model ?? '未连接'}`}</Text></View>
+  </View>;
+  const runCard = run && <View style={s.runCard}><View style={s.runHead}><View><Text style={s.micro}>AGENT EXECUTION</Text><Text style={s.runPrompt}>{run.prompt}</Text></View><Badge label={run.status === 'completed' ? 'DONE' : run.status === 'approval' ? 'NEEDS APPROVAL' : run.status === 'failed' ? 'ERROR' : run.status === 'cancelled' ? 'STOPPED' : 'RUNNING'} color={run.status === 'completed' ? C.green : run.status === 'approval' ? C.amber : run.status === 'failed' ? C.red : C.blue} /></View>
+    <View style={s.rule} />{run.events.map((event, i) => <EventRow key={event.id} event={event} last={i === run.events.length - 1} />)}
+    {run.pending && <View style={s.approval}><View style={s.approvalHead}><I name="shield" color={C.amber} /><Text style={s.approvalTitle}>需要你的批准</Text></View><Text style={s.approvalPath}>写入 {run.pending.path}</Text><ScrollView style={s.previewCode}><Text style={s.previewCodeText}>{run.pending.preview}</Text></ScrollView><View style={s.approvalActions}><Pressable onPress={() => decide(false)} disabled={busy} style={s.ghostButton}><Text style={s.ghostText}>拒绝</Text></Pressable><Pressable onPress={() => decide(true)} disabled={busy} style={s.approveButton}><I name="check" size={15} color="#061624" /><Text style={s.approveText}>批准写入</Text></Pressable></View></View>}
+    {active && run.status !== 'approval' && <Pressable onPress={cancel} style={s.stopButton}><I name="square" size={12} color={C.dim} /><Text style={s.stopText}>停止任务</Text></Pressable>}
+  </View>;
+  return <SafeAreaView style={s.root} edges={['top', 'bottom']}><StatusBar barStyle="light-content" backgroundColor={C.bg} /><View style={s.backGlow} /><View style={[s.layout, { maxWidth: desktop ? 1480 : 740 }]}>
+    {desktop && sidebar}
+    <View style={s.main}><View style={s.top}><View style={s.topBrand}>{!desktop && <LinearGradient colors={['#75C5FF', '#507AFF']} style={s.miniLogo}><Text style={s.miniN}>N</Text></LinearGradient>}<Text style={s.topTitle}>{desktop ? nav.find(x => x.id === page)?.title : 'NOVA'}</Text></View><Badge label={modelLabel} color={modelColor} /></View>
+      {!!notice && <Pressable onPress={() => setNotice('')} style={s.notice}><I name="info" size={16} color={C.amber} /><Text style={s.noticeText}>{notice}</Text><I name="x" size={15} color={C.dim} /></Pressable>}
+      <ScrollView key={page} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        {page === 'home' && <><View style={s.overline}><View style={s.liveDot} /><Text style={s.overlineText}>AUTONOMOUS · PRIVATE · YOURS</Text></View>
+          <View style={[s.hero, desktop && s.heroDesktop]}><View style={s.heroCopy}><Text style={s.heroKicker}>YOUR LOCAL INTELLIGENCE</Text><Text style={[s.heroTitle, desktop && { fontSize: 43, lineHeight: 53 }]}>想法交给你。{'\n'}<Text style={s.accentText}>执行交给 NOVA。</Text></Text><Text style={s.heroBody}>给出目标，让 Agent 自己规划、查找资料、调用工具。每一步都看得见；修改文件由你决定。</Text><Pressable onPress={() => setPage('agent')} style={s.heroAction}><Text style={s.heroActionText}>开启一次任务</Text><I name="arrow-up-right" size={19} color="#06111C" /></Pressable></View><View style={s.heroOrb}><Orb size={desktop ? 260 : 210} active={!!active} /></View></View>
+          <View style={s.sectionHeading}><View><Text style={s.micro}>ONE PROMPT. MULTIPLE ACTIONS.</Text><Text style={s.sectionTitle}>让它替你走下一步</Text></View><I name="arrow-down-right" color={C.dim} /></View><View style={[s.cards, desktop && s.cardsDesktop]}>{prompts.map(item => <Pressable key={item.title} onPress={() => jump(item.text)} style={s.actionCard}><View style={[s.actionIcon, { backgroundColor: item.hue + '22' }]}><I name={item.icon} color={item.hue} size={21} /></View><Text style={s.actionTitle}>{item.title}</Text><Text style={s.actionSub}>{item.text}</Text><View style={s.actionArrow}><I name="arrow-up-right" size={17} color={item.hue} /></View></Pressable>)}</View>
+          <View style={s.featureStrip}><I name="shield" color={C.green} size={19} /><View style={{ flex: 1 }}><Text style={s.featureTitle}>控制权一直在你手里</Text><Text style={s.featureText}>本地模型 · 可见的工具过程 · 文件写入审批</Text></View></View>
         </>}
-      </>}
-      {tab === '回顾' && <>
-        <View style={s.simpleTop}><Text style={s.eyebrow}>YOUR PROGRESS</Text><Text style={s.screenTitle}>每一步，<Text style={{ color: C.purple }}>都算数。</Text></Text><Text style={s.screenSub}>看见自己已经走过的路。</Text></View>
-        <LinearGradient colors={['#6656DF', '#8975F5']} style={s.insightHero}><View><Text style={s.insightLabel}>本周专注时长</Text><Text style={s.insightNum}>{focusMinutes}<Text style={s.insightUnit}> 分钟</Text></Text><Text style={s.insightFoot}>你为重要的事留出的时间</Text></View><Icon name="sun" size={58} color="#C7BBFF" /></LinearGradient>
-        <View style={s.statGrid}><View style={s.statCard}><Text style={s.statNum}>{weekCompleted}</Text><Text style={s.statLabel}>本周完成</Text></View><View style={s.statCard}><Text style={s.statNum}>{weekSessions.length}</Text><Text style={s.statLabel}>本周专注次数</Text></View></View>
-        <Section title="最近 7 天" right="专注分钟" /><View style={s.chartCard}><View style={s.chart}>{days.map((d, i) => <View key={i} style={s.barGroup}><Text style={s.barValue}>{d.count || ''}</Text><View style={[s.bar, { height: Math.max(6, d.count ? 18 + d.count / Math.max(1, ...days.map(x => x.count)) * 92 : 6), backgroundColor: i === 6 ? C.purple : '#DAD5FB' }]} /><Text style={s.barLabel}>{d.name}</Text></View>)}</View>{focusMinutes === 0 && <Text style={s.chartNote}>完成一次专注，这里就会出现你的节奏。</Text>}</View>
-        <View style={s.quoteCard}><Icon name="heart" size={20} color={C.coral} /><Text style={s.quote}>进步不一定很快，{'\n'}但每一次开始都很珍贵。</Text></View>
-      </>}
-      {tab === '我的' && <>
-        <View style={s.simpleTop}><Text style={s.eyebrow}>YOUR SPACE</Text><Text style={s.screenTitle}>你的空间，<Text style={{ color: C.purple }}>由你掌控。</Text></Text><Text style={s.screenSub}>思绪和记录保存在这台设备上。</Text></View>
-        <View style={s.settingsCard}><View style={s.settingRow}><View style={[s.settingIcon, { backgroundColor: C.lilac }]}><Icon name="cpu" color={C.purple} size={19} /></View><View style={{ flex: 1 }}><Text style={s.settingTitle}>AI 服务</Text><Text style={s.settingSub}>{process.env.EXPO_PUBLIC_API_URL ? '已配置，可使用 AI 整理' : '未配置，可使用演示整理'}</Text></View><View style={[s.statusDot, { backgroundColor: process.env.EXPO_PUBLIC_API_URL ? '#55BA8A' : C.coral }]} /></View><View style={s.divider} />
-          <Pressable onPress={exportData} style={s.settingRow}><View style={[s.settingIcon, { backgroundColor: '#E6F6EE' }]}><Icon name="share-2" color="#41A878" size={19} /></View><View style={{ flex: 1 }}><Text style={s.settingTitle}>导出我的数据</Text><Text style={s.settingSub}>通过系统分享 JSON 文本</Text></View><Icon name="chevron-right" color={C.muted} size={18} /></Pressable><View style={s.divider} />
-          <Pressable onPress={deleteData} style={s.settingRow}><View style={[s.settingIcon, { backgroundColor: '#FFF0EA' }]}><Icon name="trash-2" color="#E2826C" size={19} /></View><View style={{ flex: 1 }}><Text style={s.settingTitle}>清除本机数据</Text><Text style={s.settingSub}>删除所有整理和专注记录</Text></View><Icon name="chevron-right" color={C.muted} size={18} /></Pressable></View>
-        <View style={s.privacyCard}><Icon name="lock" color={C.purple} size={19} /><View style={{ flex: 1 }}><Text style={s.privacyTitle}>你的隐私，我们认真对待</Text><Text style={s.privacyText}>整理记录默认仅存于设备。使用 AI 整理时，你输入的文字会发送到你配置的服务端和 AI 提供方；演示整理完全在设备上完成。</Text></View></View><Text style={s.version}>片刻 PIANKE · v1.0.0</Text>
-      </>}
-    </ScrollView>
-    <View style={s.nav}>{tabs.map(item => <Pressable key={item.label} onPress={() => setTab(item.label)} style={s.navItem}><View style={[s.navIcon, tab === item.label && s.navIconActive]}><Icon name={item.icon} color={tab === item.label ? C.purple : '#A3A1B0'} size={21} /></View><Text style={[s.navLabel, tab === item.label && s.navLabelActive]}>{item.label}</Text></Pressable>)}</View>
-  </View>
-  <Modal visible={capture} animationType="slide" presentationStyle="pageSheet" onRequestClose={resetCapture}>
-    <SafeAreaView style={s.modalSafe} edges={['top', 'bottom']}><KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}><View style={s.modalHead}><Pressable onPress={resetCapture} hitSlop={12}><Icon name="x" size={23} /></Pressable><Text style={s.modalHeadTitle}>思绪整理</Text><View style={{ width: 23 }} /></View>
-      <ScrollView contentContainerStyle={s.modalBody} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        {!draft ? <><Text style={s.eyebrow}>LET IT OUT</Text><Text style={s.modalTitle}>想到什么，{'\n'}就写下来。</Text><Text style={s.modalIntro}>不需要有条理，也不需要一次讲清楚。</Text><TextInput multiline maxLength={1200} value={raw} onChangeText={setRaw} placeholder="比如：下周要交报告，还有几封邮件没回，感觉不知道先做哪个……" placeholderTextColor="#A5A4B1" style={s.input} textAlignVertical="top" /><Text style={s.counter}>{raw.length}/1200</Text>
-          {!!error && <Text style={s.error}>{error}</Text>}<Primary label={busy ? '正在整理…' : '用 AI 找到第一步'} onPress={() => organize('ai')} icon="arrow-right" disabled={busy} /><Pressable disabled={busy} onPress={() => organize('demo')} style={s.demoButton}><Text style={s.demoText}>先用演示整理体验</Text></Pressable><View style={s.modalTip}><Icon name="info" size={16} color={C.muted} /><Text style={s.modalTipText}>演示模式使用固定规则；AI 模式需要配置服务端。</Text></View>
-        </> : <><Text style={s.eyebrow}>{source === 'ai' ? 'AI PLAN' : 'DEMO PLAN'}</Text><Text style={s.modalTitle}>从这一步{'\n'}开始就好。</Text><Text style={s.modalIntro}>可以修改标题和每一步，保存后随时勾选。</Text><Text style={s.fieldLabel}>这件事</Text><TextInput value={draft.title} maxLength={80} onChangeText={v => setDraft({ ...draft, title: v })} style={s.editInput} /><Text style={s.fieldLabel}>行动步骤</Text>
-          {draft.steps.map((step, i) => <View key={i} style={s.editStep}><View style={s.stepNumber}><Text style={s.stepNumberText}>{i + 1}</Text></View><TextInput value={step} maxLength={100} multiline onChangeText={v => setDraft({ ...draft, steps: draft.steps.map((x, index) => index === i ? v : x) })} style={s.editStepInput} /></View>)}<View style={s.planInfo}><Icon name="clock" size={16} color={C.purple} /><Text style={s.planInfoText}>建议专注 {draft.minutes} 分钟 · {draft.category}</Text></View>
-          {!!error && <Text style={s.error}>{error}</Text>}<Primary label="保存到今天" onPress={addPlan} icon="check" /><Pressable onPress={() => { setDraft(null); setError(''); }} style={s.demoButton}><Text style={s.demoText}>返回修改原文</Text></Pressable>
+        {page === 'agent' && <><View style={s.agentHeader}><View><Text style={s.micro}>MISSION CONTROL</Text><Text style={s.screenTitle}>给它一个目标。</Text><Text style={s.screenSub}>它会决定步骤，必要时调用工具，并把过程展示给你。</Text></View><Orb size={desktop ? 138 : 108} active={!!active} /></View>
+          {!run ? <View style={s.emptyAgent}><View style={s.emptyLine}><I name="command" size={25} color={C.blue} /></View><Text style={s.emptyTitle}>Agent 等待指令</Text><Text style={s.emptyText}>从下方输入一个目标，或选择一个灵感开始。</Text>{prompts.map(item => <Pressable key={item.title} onPress={() => setPrompt(item.text)} style={s.suggestion}><I name={item.icon} color={item.hue} size={17} /><Text style={s.suggestionText}>{item.title}</Text><I name="arrow-up-right" color={C.dim} size={16} /></Pressable>)}</View> : runCard}
+          {mode === 'preview' && <Text style={s.previewNote}>PREVIEW MODE · 上面的工具执行为交互演示。连接本地模型后可处理真实文件。</Text>}
+        </>}
+        {page === 'workspace' && <><Text style={s.micro}>LOCAL KNOWLEDGE</Text><Text style={s.screenTitle}>工作区</Text><Text style={s.screenSub}>Agent 只能访问你指定的本地文档目录。读取可见，写入需批准。</Text>
+          <View style={s.workspaceTop}><View style={s.workspaceIcon}><I name="folder" color={C.blue} size={24} /></View><View style={{ flex: 1 }}><Text style={s.workspaceTitle}>{mode === 'preview' ? '示例工作区' : '我的本地工作区'}</Text><Text style={s.workspaceSub}>{mode === 'preview' ? '3 份演示资料' : `${files.length} 份 .md / .txt 文档`}</Text></View><Pressable onPress={refreshFiles}><I name="refresh-cw" color={C.dim} size={17} /></Pressable></View>
+          {(mode === 'preview' ? ['product-brief.md', 'research-notes.md', 'roadmap.md'] : files).map((name, index) => <Pressable key={name} onPress={() => viewFile(name)} style={s.fileRow}><View style={s.fileIcon}><I name="file-text" color={index % 2 ? '#B7A0FF' : '#81BDFF'} /></View><View style={{ flex: 1 }}><Text style={s.fileName}>{name}</Text><Text style={s.fileSub}>LOCAL DOCUMENT · {name.endsWith('.md') ? 'MARKDOWN' : 'TEXT'}</Text></View><I name="chevron-right" size={18} color={C.dim} /></Pressable>)}
+          {mode === 'local' && !files.length && <View style={s.emptyFiles}><Text style={s.emptyText}>暂无文件。把 .md 或 .txt 放进 data/workspace，或者让 Agent 创建一份。</Text></View>}
+          {openFile && <View style={s.openFile}><View style={s.openFileHead}><Text style={s.openFileTitle}>{openFile.name}</Text><Pressable onPress={() => setOpenFile(null)}><I name="x" color={C.dim} /></Pressable></View><Text style={s.openFileText}>{openFile.content}</Text></View>}
+        </>}
+        {page === 'settings' && <><Text style={s.micro}>LOCAL CONTROL</Text><Text style={s.screenTitle}>连接你自己的 AI。</Text><Text style={s.screenSub}>模型在你的电脑上运行。手机和电脑共享同一个本地 Agent 工作区。</Text>
+          <View style={s.settingsCard}><View style={s.settingsHeader}><I name="cpu" color={C.blue} size={22} /><View><Text style={s.settingsTitle}>运行模式</Text><Text style={s.settingsSub}>先体验，再接入真实 Ollama 模型</Text></View></View><View style={s.modeRow}><Pressable onPress={() => setMode('preview')} style={[s.modeButton, mode === 'preview' && s.modeActive]}><Text style={[s.modeText, mode === 'preview' && s.modeTextActive]}>交互预览</Text></Pressable><Pressable onPress={() => setMode('local')} style={[s.modeButton, mode === 'local' && s.modeActive]}><Text style={[s.modeText, mode === 'local' && s.modeTextActive]}>本地 Agent</Text></Pressable></View></View>
+          <View style={s.settingsCard}><Text style={s.settingsTitle}>本地服务地址</Text><Text style={s.settingsSub}>电脑填 localhost；手机填电脑在同一 Wi-Fi 下的局域网 IP。</Text><TextInput value={editedEndpoint} onChangeText={setEditedEndpoint} autoCapitalize="none" autoCorrect={false} keyboardType="url" placeholder="http://192.168.1.10:8787" placeholderTextColor={C.dim} style={s.textField} /><Text style={[s.settingsTitle, { marginTop: 21 }]}>配对码</Text><Text style={s.settingsSub}>启动服务时显示在电脑终端；不会提交到云端。</Text><TextInput value={editedPair} onChangeText={setEditedPair} autoCapitalize="none" autoCorrect={false} secureTextEntry placeholder="从终端复制配对码" placeholderTextColor={C.dim} style={s.textField} /><Pressable onPress={connect} disabled={busy} style={s.connectButton}>{busy ? <ActivityIndicator color="#07111D" /> : <><I name="link" color="#07111D" size={17} /><Text style={s.connectText}>连接本地 Agent</Text></>}</Pressable><View style={s.connectionLine}><View style={[s.badgeDot, { backgroundColor: health?.modelReady ? C.green : C.amber }]} /><Text style={s.connectionText}>{health?.modelReady ? `${health.model} 已就绪` : health?.online ? '服务已连接 · 模型尚未就绪' : '未连接到本地服务'}</Text></View></View>
+          <View style={s.helpCard}><I name="info" color={C.blue} size={20} /><View style={{ flex: 1 }}><Text style={s.helpTitle}>为什么手机不能填 localhost？</Text><Text style={s.helpText}>localhost 总是指当前设备本身。手机要连接电脑运行的 Agent，需使用电脑的局域网地址；服务仍只在你的本地网络运行。</Text></View></View>
         </>}
       </ScrollView>
-    </KeyboardAvoidingView></SafeAreaView>
-  </Modal>
+      {page === 'agent' && <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}><View style={s.composer}><View style={s.composerInput}><I name="terminal" color={C.blue} size={19} /><TextInput value={prompt} onChangeText={setPrompt} placeholder="交给 NOVA 一个目标…" placeholderTextColor={C.dim} style={s.promptInput} multiline maxLength={2000} /><Pressable onPress={submit} disabled={busy || !!active} style={[s.sendButton, (busy || !!active) && { opacity: .45 }]}><I name="arrow-up" size={18} color="#07111D" /></Pressable></View><Text style={s.composerHint}>{mode === 'preview' ? '交互预览 · 不会处理真实资料' : '本地运行 · 文件写入由你批准'}</Text></View></KeyboardAvoidingView>}
+    </View>
+    {desktop && <View style={s.rail}><Text style={s.railOverline}>SYSTEM STATUS</Text><View style={s.railPanel}><Orb size={142} active={!!active} /><Badge label={modelLabel} color={modelColor} /><Text style={s.railTitle}>{active ? '正在执行任务' : '随时准备开始'}</Text><Text style={s.railSub}>{mode === 'preview' ? '体验 Agent 如何思考、调用工具和请求审批。' : health?.modelReady ? '你的本地模型已就绪。' : '请先在设置中连接模型。'}</Text></View><Text style={s.railOverline}>CAPABILITIES</Text>{[['folder', '本地文档'], ['search', '搜索与阅读'], ['divide', '精确计算'], ['shield', '写入审批']].map(([icon, label]) => <View key={label} style={s.capability}><I name={icon as IconName} size={16} color={C.blue} /><Text style={s.capabilityText}>{label}</Text><View style={s.capabilityDot} /></View>)}<View style={s.railFoot}><I name="lock" size={13} color={C.green} /><Text style={s.railFootText}>DESIGNED FOR LOCAL CONTROL</Text></View></View>}
+  </View>
+  {!desktop && <View style={s.bottomNav}>{nav.map(item => <Pressable key={item.id} onPress={() => { setPage(item.id); if (item.id === 'workspace') void refreshFiles(); }} style={s.bottomItem}><View style={[s.bottomIcon, page === item.id && s.bottomIconActive]}><I name={item.icon} color={page === item.id ? C.blue : C.dim} size={20} /></View><Text style={[s.bottomLabel, page === item.id && { color: C.blue }]}>{item.title}</Text></Pressable>)}</View>}
   </SafeAreaView>;
 }
-export default function App() { return <SafeAreaProvider><MainApp /></SafeAreaProvider>; }
+export default function App() { return <SafeAreaProvider><AppContent /></SafeAreaProvider>; }
