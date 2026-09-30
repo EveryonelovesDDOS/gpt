@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "NOVA Local Agent",
-    "slug": "nova-local-agent",
+    "name": "NEXUS AI Network Command Center",
+    "slug": "nexus-ai-network-command-center",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
