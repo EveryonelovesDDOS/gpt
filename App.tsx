@@ -5,7 +5,7 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Orb } from './src/Orb';
-import { AnimatedBackdrop, PulseRail, ScanRing, ThinkingDots } from './src/NexusVisuals';
+import { AnimatedBackdrop, ScanRing, ThinkingDots } from './src/NexusVisuals';
 import { TopologyScene } from './src/TopologyScene';
 import { AgentRun, DefensiveAction, Health, IncidentTimeline, NetworkHealth, NetworkTopology, SecurityAnalysis } from './src/types';
 import { checkHealth, decideAction, defaultEndpoint, getActions, getIncidents, getNetworkHealth, getNetworkTopology, getRun, getSecurityAnalysis, proposeAction, startRun } from './src/api';
@@ -459,6 +459,21 @@ const st = StyleSheet.create({
   errorPanel: { marginTop: 12, flexDirection: 'row', gap: 10, alignItems: 'flex-start', borderWidth: 1, borderColor: '#6A3742', backgroundColor: '#25161B', borderRadius: 13, padding: 13 },
   errorTitle: { color: '#FFD6DB', fontSize: 10.5, fontWeight: '900' },
   errorText: { color: '#C59098', fontSize: 9.3, lineHeight: 14, marginTop: 4 },
+  topologyActions: { flexDirection:'row', alignItems:'center', gap:10, flexWrap:'wrap', justifyContent:'flex-end' },
+  modeButton: { flexDirection:'row', alignItems:'center', gap:7, borderWidth:1, borderColor:'#2F4B67', backgroundColor:'#0F1B2A', borderRadius:12, paddingHorizontal:11, paddingVertical:8 },
+  modeButtonActive: { borderColor:'#743744', backgroundColor:'#25151B' }, modeButtonText:{ color:'#8CCBFF', fontSize:9, fontWeight:'900' },
+  socGrid:{ gap:14, marginBottom:18 }, socMain:{ flex:1.55, minWidth:0 }, socSide:{ flex:1, minWidth:280, gap:12 },
+  inspectButton:{ borderWidth:1,borderColor:'#31516D',borderRadius:10,paddingHorizontal:9,paddingVertical:7,flexDirection:'row',alignItems:'center',gap:5 },
+  inspectButtonText:{ color:'#7CCBFF',fontSize:7.5,fontWeight:'900',letterSpacing:.6 },
+  timelinePanel:{ borderWidth:1,borderColor:'#293B51',backgroundColor:'#0F1825',borderRadius:18,padding:17,marginTop:12 },
+  timelineRow:{ flexDirection:'row',gap:12,minHeight:48 }, timelineTrack:{ width:18,alignItems:'center' }, timelineDot:{ width:8,height:8,borderRadius:8,backgroundColor:'#6FCBFF',marginTop:5 }, timelineDotCritical:{ backgroundColor:'#FF6D7F' }, timelineStem:{ width:1,flex:1,backgroundColor:'#263B53',marginTop:4 },
+  timelineHead:{ flexDirection:'row',justifyContent:'space-between',alignItems:'center',gap:12 }, timelineTime:{ color:'#C7D7E9',fontSize:9.5,fontWeight:'800' }, timelinePosture:{ color:'#73D6BE',fontSize:7.5,fontWeight:'900',letterSpacing:.7 }, timelineDetail:{ color:'#6E839A',fontSize:8.8,marginTop:4 },
+  containmentPanel:{ borderWidth:1,borderColor:'#30435B',backgroundColor:'#101A28',borderRadius:18,padding:16 }, containmentTitle:{ color:'#F0F6FF',fontSize:17,fontWeight:'900' }, containmentText:{ color:'#788CA4',fontSize:9.2,lineHeight:14.5,marginTop:6,marginBottom:12 },
+  containmentAction:{ flexDirection:'row',alignItems:'center',gap:9,borderWidth:1,borderColor:'#24394F',backgroundColor:'#0C1622',borderRadius:12,padding:10,marginTop:7 },
+  containmentIcon:{ width:30,height:30,borderRadius:9,backgroundColor:'#162C42',alignItems:'center',justifyContent:'center' }, containmentActionText:{ flex:1,color:'#B7C8DB',fontSize:9.5,fontWeight:'800' },
+  planCard:{ borderWidth:1,borderColor:'#4A3D2D',backgroundColor:'#1D1914',borderRadius:17,padding:15 }, planCardDone:{ borderColor:'#2F4D51',backgroundColor:'#111C22' }, planOverline:{ color:'#FFBE77',fontSize:7.5,fontWeight:'900',letterSpacing:.7 }, planTitle:{ color:'#EEF5FD',fontSize:11,fontWeight:'900',marginTop:4,maxWidth:210 }, planSummary:{ color:'#8C9BAD',fontSize:8.8,lineHeight:14,marginTop:9 },
+  codeBox:{ borderRadius:11,backgroundColor:'#081018',borderWidth:1,borderColor:'#24384C',padding:10,marginTop:10 }, codeLine:{ color:'#90D5FF',fontSize:8.2,lineHeight:14,fontFamily:'monospace' },
+  planActions:{ flexDirection:'row',gap:8,marginTop:10 }, reject:{ flex:1,borderWidth:1,borderColor:'#5E3A43',borderRadius:10,padding:9,alignItems:'center' }, rejectText:{ color:'#FF9EAA',fontSize:8,fontWeight:'900' }, approve:{ flex:1,backgroundColor:'#7BC7FF',borderRadius:10,padding:9,alignItems:'center' }, approveText:{ color:'#06111C',fontSize:8,fontWeight:'900' }, planNote:{ color:'#62758B',fontSize:7.8,lineHeight:12,marginTop:9 },
   settingsCard: { backgroundColor: '#101A28', borderWidth: 1, borderColor: '#273950', borderRadius: 19, padding: 20, marginTop: 24, maxWidth: 650 }, fieldLabel: { color: '#DDE8F5', fontWeight: '800', fontSize: 11, marginTop: 10 }, field: { color: '#EAF3FF', backgroundColor: '#0A131E', borderWidth: 1, borderColor: '#2A3F58', borderRadius: 11, padding: 13, marginTop: 8, marginBottom: 12 }, connect: { backgroundColor: '#79BDFF', borderRadius: 11, padding: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 8 }, connectText: { color: '#06111C', fontWeight: '900', fontSize: 12 }, connection: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 15 }, connectionText: { color: '#8194AB', fontSize: 10 },
   topologyBoard: { marginTop: 22, borderRadius: 22, borderWidth: 1, borderColor: '#263A52', backgroundColor: '#0D1826', padding: 20, overflow: 'hidden' },
   topologyCoreRow: { flexDirection: 'row', gap: 12, justifyContent: 'center', flexWrap: 'wrap' },
@@ -480,5 +495,5 @@ const st = StyleSheet.create({
   alertHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }, alertTitle: { color: '#EEF4FC', fontSize: 11, fontWeight: '900', flex: 1 },
   alertSeverity: { color: '#FFB77A', fontSize: 8, fontWeight: '900', letterSpacing: .8 }, alertDetail: { color: '#9AABBD', fontSize: 9.5, lineHeight: 15, marginTop: 5 },
   emptySecure: { alignItems: 'center', paddingVertical: 28 }, emptySecureTitle: { color: '#DFF8F1', fontSize: 13, fontWeight: '900', marginTop: 10 }, emptySecureText: { color: '#71879F', fontSize: 9.5, lineHeight: 15, marginTop: 5, textAlign: 'center', maxWidth: 360 },
-  bottomNav: { height: 66, borderTopWidth: 1, borderTopColor: '#1B2A3D', backgroundColor: '#0A131E', flexDirection: 'row', justifyContent: 'space-around', paddingTop: 8 }, bottomItem: { alignItems: 'center', width: 85 }, bottomText: { color: '#687B95', fontSize: 9, marginTop: 5, fontWeight: '700' },
+  bottomNav: { height: 66, borderTopWidth: 1, borderTopColor: '#1B2A3D', backgroundColor: '#0A131E', flexDirection: 'row', justifyContent: 'space-around', paddingTop: 8 }, bottomItem: { alignItems: 'center', flex: 1 }, bottomText: { color: '#687B95', fontSize: 9, marginTop: 5, fontWeight: '700' },
 });
