@@ -4,6 +4,7 @@ import { mkdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createAgent } from './agent.mjs';
+import { createPacketTracerClient } from './packetTracer.mjs';
 import { listFiles, readDocument } from './tools.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -35,7 +36,8 @@ export function createServer({
 } = {}) {
   const workspace = path.join(projectRoot, 'data', 'workspace');
   const dist = path.join(projectRoot, 'dist');
-  const agent = createAgent({ root: workspace, model, ollama, fetcher });
+  const networkClient = createPacketTracerClient({ fetcher });
+  const agent = createAgent({ root: workspace, model, ollama, fetcher, networkClient });
   const server = http.createServer(async (req, res) => {
     const origin = req.headers.origin;
     if (origin && !localOrigin(origin)) return json(res, 403, { error: '此来源不允许访问本地服务' });
