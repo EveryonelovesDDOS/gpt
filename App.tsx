@@ -187,7 +187,7 @@ function AppContent() {
   const sidebar = <View style={st.sidebar}>
     <View style={st.brand}>
       <LinearGradient colors={['#61F4C3', '#8B5CF6']} style={st.brandLogo}><Text style={st.brandN}>N</Text></LinearGradient>
-      <View><Text style={st.brandName}>NEXUS</Text><Text style={st.brandSub}>AI NETWORK COMMAND CENTER</Text></View>
+      <View><Text style={st.brandName}>NEXUS</Text><Text style={st.brandSub}>AURORA V3 · AI NETWORK COMMAND CENTER</Text></View>
     </View>
     <Text style={st.navLabel}>COMMAND</Text>
     {navigation.map(n => <Pressable key={n.id} onPress={() => setPage(n.id)} style={[st.navItem, page === n.id && st.navActive]}>
@@ -269,9 +269,9 @@ function AppContent() {
 
           {page === 'topology' && <>
             <View style={st.sectionRow}>
-              <View><Text style={st.eyebrow}>LIVE NETWORK MAP</Text><Text style={st.sectionTitle}>Topology intelligence</Text></View>
+              <View><Text style={st.eyebrow}>AURORA FABRIC · LIVE NETWORK MAP</Text><Text style={st.sectionTitle}>Topology intelligence</Text></View>
               <View style={st.topologyActions}>
-                <Pressable onPress={() => setIncidentMode(x => !x)} style={[st.modeButton, incidentMode && st.modeButtonActive]}><Icon name={incidentMode ? 'x' : 'alert-triangle'} color={incidentMode ? '#FF9CAA' : '#86CFFF'} size={14} /><Text style={[st.modeButtonText, incidentMode && { color:'#FF9CAA' }]}>{incidentMode ? 'Exit incident mode' : 'Incident mode'}</Text></Pressable>
+                <Pressable onPress={() => setIncidentMode(x => !x)} style={[st.modeButton, incidentMode && st.modeButtonActive]}><Icon name={incidentMode ? 'x' : 'alert-triangle'} color={incidentMode ? '#FF9CAA' : '#86CFFF'} size={14} /><Text style={[st.modeButtonText, incidentMode && { color:'#FF9CAA' }]}>{incidentMode ? 'EXIT INCIDENT MODE' : 'ENTER INCIDENT MODE'}</Text></Pressable>
                 <Pill text={topology ? 'LIVE GRAPH' : 'NO LIVE DATA'} good={!!topology} />
               </View>
             </View>
