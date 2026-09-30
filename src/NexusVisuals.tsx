@@ -63,7 +63,7 @@ export function ScanRing({ danger = false }: { danger?: boolean }) {
 }
 
 const v = StyleSheet.create({
-  grid: { ...StyleSheet.absoluteFillObject, opacity:.16, backgroundColor:'transparent', borderWidth:1, borderColor:'rgba(74,120,166,.08)' },
+  grid: { position:'absolute', top:0, right:0, bottom:0, left:0, opacity:.16, backgroundColor:'transparent', borderWidth:1, borderColor:'rgba(74,120,166,.08)' },
   orbA:{ position:'absolute', width:520, height:520, borderRadius:300, backgroundColor:'#0E3A68', right:-220, top:-190 },
   orbB:{ position:'absolute', width:380, height:380, borderRadius:240, backgroundColor:'#291B62', left:'28%' as any, bottom:-250 },
   particle:{ position:'absolute', backgroundColor:'#7CD8FF', shadowColor:'#7CD8FF', shadowOpacity:1, shadowRadius:8 },
