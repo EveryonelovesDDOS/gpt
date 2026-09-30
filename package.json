@@ -1,5 +1,5 @@
 {
-  "name": "nova-local-agent",
+  "name": "nexus-ai-network-command-center",
   "version": "1.0.0",
   "main": "index.ts",
   "dependencies": {
