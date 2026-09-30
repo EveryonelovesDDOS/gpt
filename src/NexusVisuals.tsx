@@ -57,18 +57,18 @@ export function ScanRing({ danger = false }: { danger?: boolean }) {
   const a = useRef(new Animated.Value(0)).current;
   useEffect(()=>{ const loop=Animated.loop(Animated.timing(a,{toValue:1,duration:2200,easing:Easing.out(Easing.quad),useNativeDriver:true})); loop.start(); return()=>loop.stop(); },[]);
   return <View style={v.scanWrap}>
-    <Animated.View style={[v.scanRing,{ borderColor: danger ? '#FF6578' : '#68D9FF', opacity:a.interpolate({inputRange:[0,1],outputRange:[.8,0]}), transform:[{scale:a.interpolate({inputRange:[0,1],outputRange:[.65,1.45]})}] }]} />
-    <View style={[v.scanCore,{ backgroundColor:danger?'#FF6578':'#68D9FF' }]} />
+    <Animated.View style={[v.scanRing,{ borderColor: danger ? '#FF6B8A' : '#61F4C3', opacity:a.interpolate({inputRange:[0,1],outputRange:[.8,0]}), transform:[{scale:a.interpolate({inputRange:[0,1],outputRange:[.65,1.45]})}] }]} />
+    <View style={[v.scanCore,{ backgroundColor:danger?'#FF6B8A':'#61F4C3' }]} />
   </View>;
 }
 
 const v = StyleSheet.create({
-  grid: { position:'absolute', top:0, right:0, bottom:0, left:0, opacity:.16, backgroundColor:'transparent', borderWidth:1, borderColor:'rgba(74,120,166,.08)' },
-  orbA:{ position:'absolute', width:520, height:520, borderRadius:300, backgroundColor:'#0E3A68', right:-220, top:-190 },
-  orbB:{ position:'absolute', width:380, height:380, borderRadius:240, backgroundColor:'#291B62', left:'28%' as any, bottom:-250 },
-  particle:{ position:'absolute', backgroundColor:'#7CD8FF', shadowColor:'#7CD8FF', shadowOpacity:1, shadowRadius:8 },
-  rail:{ overflow:'hidden', backgroundColor:'#21384E' }, railHorizontal:{ height:2, flex:1 }, railVertical:{ width:2, height:120, alignSelf:'center' },
-  railPulse:{ width:34, height:3, borderRadius:3, backgroundColor:'#7AD9FF', shadowColor:'#7AD9FF', shadowOpacity:1, shadowRadius:10 },
-  dots:{ flexDirection:'row', gap:5, alignItems:'center' }, thinkDot:{ width:6, height:6, borderRadius:6, backgroundColor:'#7BC9FF' },
+  grid: { position:'absolute', top:0, right:0, bottom:0, left:0, opacity:.16, backgroundColor:'transparent', borderWidth:1, borderColor:'rgba(132,94,194,.10)' },
+  orbA:{ position:'absolute', width:520, height:520, borderRadius:300, backgroundColor:'#243B31', right:-220, top:-190 },
+  orbB:{ position:'absolute', width:380, height:380, borderRadius:240, backgroundColor:'#3B2154', left:'28%' as any, bottom:-250 },
+  particle:{ position:'absolute', backgroundColor:'#61F4C3', shadowColor:'#61F4C3', shadowOpacity:1, shadowRadius:8 },
+  rail:{ overflow:'hidden', backgroundColor:'#3A3344' }, railHorizontal:{ height:2, flex:1 }, railVertical:{ width:2, height:120, alignSelf:'center' },
+  railPulse:{ width:34, height:3, borderRadius:3, backgroundColor:'#A78BFA', shadowColor:'#A78BFA', shadowOpacity:1, shadowRadius:10 },
+  dots:{ flexDirection:'row', gap:5, alignItems:'center' }, thinkDot:{ width:6, height:6, borderRadius:6, backgroundColor:'#61F4C3' },
   scanWrap:{ width:28,height:28,alignItems:'center',justifyContent:'center' }, scanRing:{ position:'absolute', width:28,height:28,borderRadius:20,borderWidth:1 }, scanCore:{ width:6,height:6,borderRadius:6 },
 });
