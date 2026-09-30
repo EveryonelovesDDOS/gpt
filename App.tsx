@@ -117,6 +117,29 @@ function AppContent() {
     finally { setBusy(false); }
   }
 
+  async function createDefensivePlan(kind: string) {
+    if (!connected) { setNotice('Connect NEXUS first.'); setPage('settings'); return; }
+    setBusy(true); setNotice('');
+    try {
+      const proposal = await proposeAction(endpoint, pair, kind);
+      setActions(prev => [proposal, ...prev.filter(x => x.id !== proposal.id)]);
+      setNotice('Defensive change plan prepared. Review the commands before approval.');
+    } catch (e) { setNotice(e instanceof Error ? e.message : 'Unable to create defensive plan'); }
+    finally { setBusy(false); }
+  }
+
+  async function decideDefensivePlan(id: string, approved: boolean) {
+    setBusy(true); setNotice('');
+    try {
+      const proposal = await decideAction(endpoint, pair, id, approved);
+      setActions(prev => prev.map(x => x.id === id ? proposal : x));
+      setNotice(approved
+        ? 'Plan approved for preview. Automatic IOS execution remains disabled until a verified write transport is configured.'
+        : 'Plan rejected. No network change was made.');
+    } catch (e) { setNotice(e instanceof Error ? e.message : 'Unable to update defensive plan'); }
+    finally { setBusy(false); }
+  }
+
   async function submit() {
     if (!connected) { setNotice('Connect NEXUS in Settings first.'); setPage('settings'); return; }
     if (prompt.trim().length < 3) return;
