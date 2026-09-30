@@ -151,3 +151,8 @@ npm run server
 ```
 
 Keep Packet Tracer open with NEXUS-CTRL Real World Access enabled on port 58000, then open `http://localhost:8787` and pair using the code shown in the terminal.
+
+
+### Current verified release
+
+The current command-center release includes the post-CI fix for React Native Web animation compatibility (`StyleSheet.absoluteFillObject` was replaced with explicit absolute positioning), plus the final animated topology, incident mode, SOC timeline, defensive-plan preview workflow, and AI operator console.
