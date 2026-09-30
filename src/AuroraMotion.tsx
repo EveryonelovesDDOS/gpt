@@ -166,13 +166,13 @@ export function PulseHalo({ color = '#64DFC2' }: { color?:string }) {
 }
 
 const m = StyleSheet.create({
-  mesh:{position:'absolute',top:0,right:0,bottom:0,left:0,backgroundColor:'#F4F7FB'},
-  blobMint:{position:'absolute',width:560,height:560,borderRadius:320,backgroundColor:'#DDF9F1',right:-180,top:-220},
-  blobLilac:{position:'absolute',width:430,height:430,borderRadius:260,backgroundColor:'#EEE8FF',left:-170,bottom:-180,opacity:.72},
-  blobSky:{position:'absolute',width:300,height:300,borderRadius:200,backgroundColor:'#E5F2FF',left:'42%' as any,top:'34%' as any,opacity:.55},
-  spark:{position:'absolute',width:4,height:4,borderRadius:4,backgroundColor:'#9AA7BA'},
+  mesh:{position:'absolute',top:0,right:0,bottom:0,left:0,backgroundColor:'#EEF3FA'},
+  blobMint:{position:'absolute',width:560,height:560,borderRadius:320,backgroundColor:'#CFF4E8',right:-180,top:-220},
+  blobLilac:{position:'absolute',width:430,height:430,borderRadius:260,backgroundColor:'#E5E0FF',left:-170,bottom:-180,opacity:.72},
+  blobSky:{position:'absolute',width:300,height:300,borderRadius:200,backgroundColor:'#DBECFF',left:'42%' as any,top:'34%' as any,opacity:.55},
+  spark:{position:'absolute',width:4,height:4,borderRadius:4,backgroundColor:'#7A8BA3'},
   tabs:{height:48,flexDirection:'row',alignItems:'center',padding:4,backgroundColor:'rgba(255,255,255,.78)',borderWidth:1,borderColor:'#DDE4EE',borderRadius:16,overflow:'hidden',shadowColor:'#65748A',shadowOpacity:.08,shadowRadius:18,shadowOffset:{width:0,height:8}},
-  indicator:{position:'absolute',left:4,top:4,bottom:4,borderRadius:12,backgroundColor:'#172033',shadowColor:'#172033',shadowOpacity:.16,shadowRadius:10},
+  indicator:{position:'absolute',left:4,top:4,bottom:4,borderRadius:12,backgroundColor:'#10213B',shadowColor:'#10213B',shadowOpacity:.16,shadowRadius:10},
   tab:{height:40,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:7,zIndex:2},
   tabText:{fontSize:9.5,fontWeight:'800',color:'#5E6B80'},tabTextActive:{color:'#FFFFFF'},
   flowCard:{minHeight:72,flexDirection:'row',alignItems:'center',gap:18,borderWidth:1,borderColor:'#CBD6E5',backgroundColor:'rgba(255,255,255,.92)',borderRadius:18,paddingHorizontal:16,paddingVertical:12,shadowColor:'#66758C',shadowOpacity:.07,shadowRadius:16,shadowOffset:{width:0,height:8}},
