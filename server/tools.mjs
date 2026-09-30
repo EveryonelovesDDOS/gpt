@@ -6,6 +6,8 @@ export const definitions = [
   { type: 'function', function: { name: 'read_file', description: 'Read a .md or .txt document from the local workspace.', parameters: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] } } },
   { type: 'function', function: { name: 'search_files', description: 'Find lines containing a phrase in local documents.', parameters: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] } } },
   { type: 'function', function: { name: 'calculate', description: 'Calculate a basic arithmetic expression.', parameters: { type: 'object', properties: { expression: { type: 'string' } }, required: ['expression'] } } },
+  { type: 'function', function: { name: 'get_network_devices', description: 'Read the current Packet Tracer controller inventory and return discovered network devices, management IPs, interface counts, and reachability.', parameters: { type: 'object', properties: {} } } },
+  { type: 'function', function: { name: 'get_network_health', description: 'Check the Packet Tracer lab health and summarize how many discovered devices are reachable.', parameters: { type: 'object', properties: {} } } },
   { type: 'function', function: { name: 'write_file', description: 'Create or update one .md or .txt document in the local workspace. Requires user approval.', parameters: { type: 'object', properties: { path: { type: 'string' }, content: { type: 'string' } }, required: ['path', 'content'] } } },
 ];
 
@@ -20,7 +22,6 @@ async function target(root, name) {
   safeName(name);
   const base = await realpath(root);
   const full = path.join(base, name);
-  // Flat workspace only: rejecting symlinks avoids escaping through a file alias.
   try { if ((await lstat(full)).isSymbolicLink()) throw new Error('不允许符号链接'); } catch (e) { if (e.code !== 'ENOENT') throw e; }
   return full;
 }
@@ -56,7 +57,7 @@ export function calculate(expression) {
   if (i !== tokens.length || !Number.isFinite(result)) throw new Error('表达式无效');
   return String(Number(result.toPrecision(12)));
 }
-export async function executeTool(root, name, args) {
+export async function executeTool(root, name, args, { networkClient } = {}) {
   if (!toolNames.has(name) || !args || typeof args !== 'object' || Array.isArray(args)) throw new Error('未知工具或参数');
   switch (name) {
     case 'list_files': return JSON.stringify(await listFiles(root));
@@ -72,6 +73,12 @@ export async function executeTool(root, name, args) {
       return JSON.stringify(results);
     }
     case 'calculate': return calculate(args.expression);
+    case 'get_network_devices':
+      if (!networkClient) throw new Error('Packet Tracer integration is unavailable');
+      return JSON.stringify(await networkClient.getNetworkDevices());
+    case 'get_network_health':
+      if (!networkClient) throw new Error('Packet Tracer integration is unavailable');
+      return JSON.stringify(await networkClient.getNetworkHealth());
     case 'write_file': return await writeDocument(root, args.path, args.content);
   }
 }
