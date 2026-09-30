@@ -5,10 +5,10 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Orb } from './src/Orb';
-import { AgentRun, Health, NetworkHealth } from './src/types';
-import { checkHealth, defaultEndpoint, getNetworkHealth, getRun, startRun } from './src/api';
+import { AgentRun, Health, NetworkHealth, NetworkTopology, SecurityAnalysis } from './src/types';
+import { checkHealth, defaultEndpoint, getNetworkHealth, getNetworkTopology, getRun, getSecurityAnalysis, startRun } from './src/api';
 
-type Page = 'dashboard' | 'agent' | 'settings';
+type Page = 'dashboard' | 'topology' | 'security' | 'agent' | 'settings';
 type IconName = keyof typeof Feather.glyphMap;
 
 const previewNetwork: NetworkHealth = {
@@ -53,6 +53,8 @@ function AppContent() {
   const [editPair, setEditPair] = useState('');
   const [serverHealth, setServerHealth] = useState<Health | null>(null);
   const [network, setNetwork] = useState<NetworkHealth | null>(null);
+  const [topology, setTopology] = useState<NetworkTopology | null>(null);
+  const [security, setSecurity] = useState<SecurityAnalysis | null>(null);
   const [connected, setConnected] = useState(false);
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
@@ -69,7 +71,7 @@ function AppContent() {
   useEffect(() => {
     if (!connected) return;
     const timer = setInterval(() => {
-      getNetworkHealth(endpoint, pair).then(setNetwork).catch(() => {});
+      Promise.all([getNetworkHealth(endpoint, pair), getNetworkTopology(endpoint, pair), getSecurityAnalysis(endpoint, pair)]).then(([n,t,s]) => { setNetwork(n); setTopology(t); setSecurity(s); }).catch(() => {});
     }, 4000);
     return () => clearInterval(timer);
   }, [connected, endpoint, pair]);
@@ -91,8 +93,8 @@ function AppContent() {
       const url = editEndpoint.trim().replace(/\/$/, '');
       const token = editPair.trim();
       const h = await checkHealth(url);
-      const n = await getNetworkHealth(url, token);
-      setEndpoint(url); setPair(token); setServerHealth(h); setNetwork(n); setConnected(true);
+      const [n, t, s] = await Promise.all([getNetworkHealth(url, token), getNetworkTopology(url, token), getSecurityAnalysis(url, token)]);
+      setEndpoint(url); setPair(token); setServerHealth(h); setNetwork(n); setTopology(t); setSecurity(s); setConnected(true);
       await AsyncStorage.multiSet([['@nexus/endpoint', url], ['@nexus/pair', token]]);
       setNotice('Connected to NEXUS and Packet Tracer Controller.');
       setPage('dashboard');
@@ -105,7 +107,7 @@ function AppContent() {
   async function refreshNetwork() {
     if (!connected) return setPage('settings');
     setBusy(true);
-    try { setNetwork(await getNetworkHealth(endpoint, pair)); }
+    try { const [n,t,s] = await Promise.all([getNetworkHealth(endpoint, pair), getNetworkTopology(endpoint, pair), getSecurityAnalysis(endpoint, pair)]); setNetwork(n); setTopology(t); setSecurity(s); }
     catch (e) { setNotice(e instanceof Error ? e.message : 'Refresh failed'); }
     finally { setBusy(false); }
   }
@@ -123,6 +125,8 @@ function AppContent() {
 
   const navigation = useMemo(() => [
     { id: 'dashboard' as Page, label: 'Dashboard', icon: 'activity' as IconName },
+    { id: 'topology' as Page, label: 'Topology', icon: 'git-branch' as IconName },
+    { id: 'security' as Page, label: 'Security', icon: 'shield' as IconName },
     { id: 'agent' as Page, label: 'AI Agent', icon: 'command' as IconName },
     { id: 'settings' as Page, label: 'Settings', icon: 'sliders' as IconName },
   ], []);
