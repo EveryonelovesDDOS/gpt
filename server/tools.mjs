@@ -8,6 +8,9 @@ export const definitions = [
   { type: 'function', function: { name: 'calculate', description: 'Calculate a basic arithmetic expression.', parameters: { type: 'object', properties: { expression: { type: 'string' } }, required: ['expression'] } } },
   { type: 'function', function: { name: 'get_network_devices', description: 'Read the current Packet Tracer controller inventory and return discovered network devices, management IPs, interface counts, and reachability.', parameters: { type: 'object', properties: {} } } },
   { type: 'function', function: { name: 'get_network_health', description: 'Check the Packet Tracer lab health and summarize how many discovered devices are reachable.', parameters: { type: 'object', properties: {} } } },
+  { type: 'function', function: { name: 'get_network_hosts', description: 'Read endpoint hosts discovered by the Packet Tracer controller, including IP, MAC, connected interface, VLAN-derived zone and trust classification.', parameters: { type: 'object', properties: {} } } },
+  { type: 'function', function: { name: 'get_network_topology', description: 'Build a topology view from controller-discovered devices and hosts plus known lab backbone relationships.', parameters: { type: 'object', properties: {} } } },
+  { type: 'function', function: { name: 'get_security_analysis', description: 'Run defensive lab security analysis using reachability, VLAN segmentation, and lab threat markers. This does not claim IDS certainty.', parameters: { type: 'object', properties: {} } } },
   { type: 'function', function: { name: 'write_file', description: 'Create or update one .md or .txt document in the local workspace. Requires user approval.', parameters: { type: 'object', properties: { path: { type: 'string' }, content: { type: 'string' } }, required: ['path', 'content'] } } },
 ];
 
@@ -79,6 +82,15 @@ export async function executeTool(root, name, args, { networkClient } = {}) {
     case 'get_network_health':
       if (!networkClient) throw new Error('Packet Tracer integration is unavailable');
       return JSON.stringify(await networkClient.getNetworkHealth());
+    case 'get_network_hosts':
+      if (!networkClient) throw new Error('Packet Tracer integration is unavailable');
+      return JSON.stringify(await networkClient.getHosts());
+    case 'get_network_topology':
+      if (!networkClient) throw new Error('Packet Tracer integration is unavailable');
+      return JSON.stringify(await networkClient.getTopology());
+    case 'get_security_analysis':
+      if (!networkClient) throw new Error('Packet Tracer integration is unavailable');
+      return JSON.stringify(await networkClient.getSecurityAnalysis());
     case 'write_file': return await writeDocument(root, args.path, args.content);
   }
 }
