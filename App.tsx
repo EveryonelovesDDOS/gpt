@@ -6,8 +6,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Orb } from './src/Orb';
 import { AnimatedBackdrop, PulseRail, ScanRing, ThinkingDots } from './src/NexusVisuals';
-import { AgentRun, Health, NetworkHealth, NetworkTopology, SecurityAnalysis } from './src/types';
-import { checkHealth, defaultEndpoint, getNetworkHealth, getNetworkTopology, getRun, getSecurityAnalysis, startRun } from './src/api';
+import { TopologyScene } from './src/TopologyScene';
+import { AgentRun, DefensiveAction, Health, IncidentTimeline, NetworkHealth, NetworkTopology, SecurityAnalysis } from './src/types';
+import { checkHealth, decideAction, defaultEndpoint, getActions, getIncidents, getNetworkHealth, getNetworkTopology, getRun, getSecurityAnalysis, proposeAction, startRun } from './src/api';
 
 type Page = 'dashboard' | 'topology' | 'security' | 'agent' | 'settings';
 type IconName = keyof typeof Feather.glyphMap;
@@ -56,6 +57,9 @@ function AppContent() {
   const [network, setNetwork] = useState<NetworkHealth | null>(null);
   const [topology, setTopology] = useState<NetworkTopology | null>(null);
   const [security, setSecurity] = useState<SecurityAnalysis | null>(null);
+  const [incidents, setIncidents] = useState<IncidentTimeline | null>(null);
+  const [actions, setActions] = useState<DefensiveAction[]>([]);
+  const [incidentMode, setIncidentMode] = useState(false);
   const [connected, setConnected] = useState(false);
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
@@ -72,7 +76,7 @@ function AppContent() {
   useEffect(() => {
     if (!connected) return;
     const timer = setInterval(() => {
-      Promise.all([getNetworkHealth(endpoint, pair), getNetworkTopology(endpoint, pair), getSecurityAnalysis(endpoint, pair)]).then(([n,t,s]) => { setNetwork(n); setTopology(t); setSecurity(s); }).catch(() => {});
+      Promise.all([getNetworkHealth(endpoint, pair), getNetworkTopology(endpoint, pair), getSecurityAnalysis(endpoint, pair), getIncidents(endpoint, pair), getActions(endpoint, pair)]).then(([n,t,s,i,a]) => { setNetwork(n); setTopology(t); setSecurity(s); setIncidents(i); setActions(a.proposals); }).catch(() => {});
     }, 4000);
     return () => clearInterval(timer);
   }, [connected, endpoint, pair]);
@@ -94,8 +98,8 @@ function AppContent() {
       const url = editEndpoint.trim().replace(/\/$/, '');
       const token = editPair.trim();
       const h = await checkHealth(url);
-      const [n, t, s] = await Promise.all([getNetworkHealth(url, token), getNetworkTopology(url, token), getSecurityAnalysis(url, token)]);
-      setEndpoint(url); setPair(token); setServerHealth(h); setNetwork(n); setTopology(t); setSecurity(s); setConnected(true);
+      const [n, t, s, i, a] = await Promise.all([getNetworkHealth(url, token), getNetworkTopology(url, token), getSecurityAnalysis(url, token), getIncidents(url, token), getActions(url, token)]);
+      setEndpoint(url); setPair(token); setServerHealth(h); setNetwork(n); setTopology(t); setSecurity(s); setIncidents(i); setActions(a.proposals); setConnected(true);
       await AsyncStorage.multiSet([['@nexus/endpoint', url], ['@nexus/pair', token]]);
       setNotice('Connected to NEXUS and Packet Tracer Controller.');
       setPage('dashboard');
@@ -108,7 +112,7 @@ function AppContent() {
   async function refreshNetwork() {
     if (!connected) return setPage('settings');
     setBusy(true);
-    try { const [n,t,s] = await Promise.all([getNetworkHealth(endpoint, pair), getNetworkTopology(endpoint, pair), getSecurityAnalysis(endpoint, pair)]); setNetwork(n); setTopology(t); setSecurity(s); }
+    try { const [n,t,s,i,a] = await Promise.all([getNetworkHealth(endpoint, pair), getNetworkTopology(endpoint, pair), getSecurityAnalysis(endpoint, pair), getIncidents(endpoint, pair), getActions(endpoint, pair)]); setNetwork(n); setTopology(t); setSecurity(s); setIncidents(i); setActions(a.proposals); }
     catch (e) { setNotice(e instanceof Error ? e.message : 'Refresh failed'); }
     finally { setBusy(false); }
   }
