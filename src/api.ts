@@ -1,4 +1,4 @@
-import { AgentRun, Health, NetworkDevice, NetworkHealth } from './types';
+import { AgentRun, Health, NetworkDevice, NetworkHealth, NetworkHost, NetworkTopology, SecurityAnalysis } from './types';
 
 export const defaultEndpoint = () => {
   if (typeof window !== 'undefined' && window.location?.protocol?.startsWith('http')) {
@@ -33,3 +33,7 @@ export const cancelRun = (base: string, token: string, id: string) => request<Ag
 
 export const getNetworkDevices = (base: string, token: string) => request<{ devices: NetworkDevice[] }>(base, '/api/network/devices', token);
 export const getNetworkHealth = (base: string, token: string) => request<NetworkHealth>(base, '/api/network/health', token);
+
+export const getNetworkHosts = (base: string, token: string) => request<{ hosts: NetworkHost[] }>(base, '/api/network/hosts', token);
+export const getNetworkTopology = (base: string, token: string) => request<NetworkTopology>(base, '/api/network/topology', token);
+export const getSecurityAnalysis = (base: string, token: string) => request<SecurityAnalysis>(base, '/api/network/security', token);
