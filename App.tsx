@@ -341,7 +341,7 @@ function AppContent() {
           {page === 'agent' && <>
             <View style={[st.agentCommand, desktop && { flexDirection: 'row' }]}>
               <View style={st.agentLeft}>
-                <View style={st.agentHeroV2}>
+                <View style={[st.agentHeroV2, !desktop && { flexDirection:'column', alignItems:'stretch' }]}>
                   <View style={{ flex: 1 }}>
                     <Text style={st.eyebrow}>NEXUS COGNITIVE OPS</Text>
                     <Text style={st.agentTitle}>Command the network.{"\n"}<Text style={st.agentAccent}>Watch NEXUS reason.</Text></Text>
@@ -370,7 +370,7 @@ function AppContent() {
                 </View>
               </View>
 
-              <View style={st.agentRight}>
+              <View style={[st.agentRight, desktop && { width:310 }]}>
                 <View style={st.cognitivePanel}>
                   <View style={st.cognitiveHead}><Text style={st.cognitiveLabel}>COGNITIVE STATUS</Text><Pill text={serverHealth?.modelReady ? 'MODEL READY' : 'MODEL FALLBACK'} good={!!serverHealth?.modelReady} /></View>
                   <View style={st.cognitiveModel}><ScanRing /><View><Text style={st.cognitiveModelName}>{serverHealth?.model || 'Auto-select'}</Text><Text style={st.cognitiveModelMeta}>Local Ollama · tool-enabled workflow</Text></View></View>
@@ -440,11 +440,11 @@ const st = StyleSheet.create({
   runCard: { borderRadius: 19, borderWidth: 1, borderColor: '#263950', backgroundColor: '#101A28', padding: 18 }, runTitle: { color: '#EDF5FF', fontWeight: '800', fontSize: 13, flex: 1 }, event: { flexDirection: 'row', gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#1D2D41' }, eventTitle: { color: '#DDE9F8', fontSize: 11, fontWeight: '800' }, eventText: { color: '#7E91A8', fontSize: 10, lineHeight: 16, marginTop: 3 }, answer: { backgroundColor: '#13253A', borderRadius: 13, padding: 15, marginTop: 14 }, answerLabel: { color: '#79BDFF', fontSize: 9, fontWeight: '900', letterSpacing: 1.5 }, answerText: { color: '#D6E3F2', fontSize: 12, lineHeight: 20, marginTop: 8 },
   agentCommand: { gap: 18, alignItems: 'stretch' },
   agentLeft: { flex: 1, minWidth: 0 },
-  agentRight: { width: 310 },
+  agentRight: { width: '100%' },
   agentHeroV2: { minHeight: 230, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#264664', backgroundColor: '#0D1A2B', borderRadius: 24, padding: 24, overflow: 'hidden' },
   agentTitle: { color: '#F2F7FF', fontSize: 31, lineHeight: 39, fontWeight: '900', letterSpacing: -.7 },
   agentAccent: { color: '#73C7FF' },
-  agentOrbWrap: { width: 165, alignItems: 'center', justifyContent: 'center' },
+  agentOrbWrap: { minWidth: 150, alignItems: 'center', justifyContent: 'center' },
   commandBox: { marginTop: 16, borderWidth: 1, borderColor: '#315675', backgroundColor: '#0A1522', borderRadius: 18, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10, shadowColor: '#53B9FF', shadowOpacity: .08, shadowRadius: 22 },
   commandPrefix: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingLeft: 4 },
   commandPrefixText: { color: '#6FCBFF', fontSize: 9, fontWeight: '900', letterSpacing: 1.1 },
