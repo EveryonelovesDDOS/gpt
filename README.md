@@ -119,3 +119,35 @@ Which discovered device is the core switch?
 ```
 
 Packet Tracer's simulated devices can report fields such as `collectionStatus: Unsupported` even while `reachabilityStatus` is `Reachable`. NEXUS therefore treats reachability as the primary online/offline signal and preserves the collection status as a separate field.
+
+
+## NEXUS final command-center features
+
+The current build goes beyond device inventory and adds an operator-style experience for the Packet Tracer lab:
+
+- Animated interactive topology with live device and host nodes.
+- Incident mode that highlights the simulated threat-marker host path.
+- VLAN-aware trust zones for ADMIN, FINANCE, STAFF, GUEST, SERVER, and MANAGEMENT.
+- Defensive security feed with explicit distinction between observed controller data and NEXUS heuristics.
+- Rolling incident timeline snapshots.
+- AI operator responses structured around Observed / Inferred / Risk / Next Checks / Confidence.
+- Approval-gated defensive change plans with command and rollback previews.
+- Automatic Ollama model fallback if the configured model is missing.
+- Responsive desktop/mobile command center UI.
+
+### Important safety / execution note
+
+Defensive change plans are **preview-only** in this build. NEXUS can generate a reversible IOS command plan and record an approval or rejection, but it does not automatically push configuration to the simulated switch or router because the current Packet Tracer integration has not been given a verified write transport. The UI states this explicitly and never reports that a change was executed when it was only approved for preview.
+
+To run the live lab:
+
+```cmd
+cd /d D:\gpt
+set PT_CONTROLLER_USERNAME=admin
+set PT_CONTROLLER_PASSWORD=cisco
+npm install
+npm run build:web
+npm run server
+```
+
+Keep Packet Tracer open with NEXUS-CTRL Real World Access enabled on port 58000, then open `http://localhost:8787` and pair using the code shown in the terminal.
