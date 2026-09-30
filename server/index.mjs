@@ -73,6 +73,7 @@ export function createServer({
     if (supplied !== token) return json(res, 401, { error: '配对码无效' }, origin);
     try {
       if (url.pathname === '/api/network/devices' && req.method === 'GET') return json(res, 200, { devices: await networkClient.getNetworkDevices() }, origin);
+      if (url.pathname === '/api/network/health' && req.method === 'GET') return json(res, 200, await networkClient.getNetworkHealth(), origin);
       if (url.pathname === '/api/files' && req.method === 'GET') {
         const files = await listFiles(workspace); return json(res, 200, { files }, origin);
       }
