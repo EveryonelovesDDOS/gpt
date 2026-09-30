@@ -115,6 +115,44 @@ export function AnimatedTabs({
   </View>;
 }
 
+export function ContinuousDataFlow({
+  label = 'LIVE PACKET FLOW',
+  sublabel = 'controller → fabric → endpoints',
+}: {
+  label?: string;
+  sublabel?: string;
+}) {
+  const flow = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.timing(flow,{toValue:1,duration:2400,easing:Easing.linear,useNativeDriver:true})
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [flow]);
+
+  const ball = (offset:number, color:string) => (
+    <Animated.View style={[m.flowBall,{backgroundColor:color,shadowColor:color,
+      opacity:flow.interpolate({inputRange:[0,.06,.92,1],outputRange:[0,1,1,0]}),
+      transform:[{translateX:flow.interpolate({inputRange:[0,1],outputRange:[-26 + offset, 330 + offset]})}]
+    }]} />
+  );
+
+  return <View style={m.flowCard}>
+    <View style={m.flowCopy}>
+      <Text style={m.flowLabel}>{label}</Text>
+      <Text style={m.flowSub}>{sublabel}</Text>
+    </View>
+    <View style={m.flowTrack}>
+      <View style={m.flowLine} />
+      {ball(-80,'#16B88F')}
+      {ball(-10,'#635BFF')}
+      {ball(60,'#F04F6D')}
+    </View>
+    <View style={m.flowBadge}><Text style={m.flowBadgeText}>STREAMING</Text></View>
+  </View>;
+}
+
 export function PulseHalo({ color = '#64DFC2' }: { color?:string }) {
   const p = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -137,5 +175,10 @@ const m = StyleSheet.create({
   indicator:{position:'absolute',left:4,top:4,bottom:4,borderRadius:12,backgroundColor:'#172033',shadowColor:'#172033',shadowOpacity:.16,shadowRadius:10},
   tab:{height:40,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:7,zIndex:2},
   tabText:{fontSize:9.5,fontWeight:'800',color:'#5E6B80'},tabTextActive:{color:'#FFFFFF'},
+  flowCard:{minHeight:72,flexDirection:'row',alignItems:'center',gap:18,borderWidth:1,borderColor:'#CBD6E5',backgroundColor:'rgba(255,255,255,.92)',borderRadius:18,paddingHorizontal:16,paddingVertical:12,shadowColor:'#66758C',shadowOpacity:.07,shadowRadius:16,shadowOffset:{width:0,height:8}},
+  flowCopy:{width:190},flowLabel:{color:'#0F1B2D',fontSize:9,fontWeight:'900',letterSpacing:1.1},flowSub:{color:'#69788D',fontSize:8.2,marginTop:4},
+  flowTrack:{flex:1,minWidth:220,height:30,justifyContent:'center',overflow:'hidden'},flowLine:{height:2,backgroundColor:'#DCE4EE',borderRadius:2},
+  flowBall:{position:'absolute',width:10,height:10,borderRadius:10,shadowOpacity:.28,shadowRadius:8},
+  flowBadge:{borderRadius:999,backgroundColor:'#E8F8F3',borderWidth:1,borderColor:'#B8E9DA',paddingHorizontal:10,paddingVertical:6},flowBadgeText:{color:'#159674',fontSize:7.5,fontWeight:'900',letterSpacing:.8},
   haloWrap:{width:28,height:28,alignItems:'center',justifyContent:'center'},halo:{position:'absolute',width:28,height:28,borderWidth:1.5,borderRadius:20},haloCore:{width:7,height:7,borderRadius:7},
 });
