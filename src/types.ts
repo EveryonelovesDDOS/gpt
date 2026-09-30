@@ -6,3 +6,6 @@ export type AgentRun = {
   pending?: { name: string; path: string; preview: string } | null;
 };
 export type Health = { online: boolean; model: string; modelReady: boolean };
+
+export type NetworkDevice = { id: string; name: string; role: string; managementIp: string; ipAddresses: string[]; macAddress: string; interfaces: number; status: string; reachabilityStatus: string; collectionStatus: string; lastUpdated: string };
+export type NetworkHealth = { controllerOnline: boolean; deviceCount: number; reachableCount: number; unreachableCount: number; allReachable: boolean; checkedAt: string; devices: NetworkDevice[] };
