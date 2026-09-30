@@ -1,4 +1,4 @@
-import { AgentRun, Health, NetworkDevice, NetworkHealth, NetworkHost, NetworkTopology, SecurityAnalysis } from './types';
+import { AgentRun, DefensiveAction, Health, IncidentTimeline, NetworkDevice, NetworkHealth, NetworkHost, NetworkTopology, SecurityAnalysis } from './types';
 
 export const defaultEndpoint = () => {
   if (typeof window !== 'undefined' && window.location?.protocol?.startsWith('http')) {
@@ -37,3 +37,8 @@ export const getNetworkHealth = (base: string, token: string) => request<Network
 export const getNetworkHosts = (base: string, token: string) => request<{ hosts: NetworkHost[] }>(base, '/api/network/hosts', token);
 export const getNetworkTopology = (base: string, token: string) => request<NetworkTopology>(base, '/api/network/topology', token);
 export const getSecurityAnalysis = (base: string, token: string) => request<SecurityAnalysis>(base, '/api/network/security', token);
+
+export const getIncidents = (base: string, token: string) => request<IncidentTimeline>(base, '/api/incidents', token);
+export const getActions = (base: string, token: string) => request<{ proposals: DefensiveAction[] }>(base, '/api/actions', token);
+export const proposeAction = (base: string, token: string, kind: string) => request<DefensiveAction>(base, '/api/actions/propose', token, 'POST', { kind });
+export const decideAction = (base: string, token: string, id: string, approved: boolean) => request<DefensiveAction>(base, `/api/actions/${id}/decision`, token, 'POST', { approved });
