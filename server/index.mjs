@@ -64,10 +64,10 @@ export function createServer({
         const timeout = setTimeout(() => controller.abort(), 1200);
         try {
           const response = await fetcher(`${ollama}/api/tags`, { signal: controller.signal });
-          if (response.ok) modelReady = (await response.json()).models?.some(x => x.name === model || x.model === model) || false;
+          if (response.ok) { const payload = await response.json(); const installed = payload.models?.map(x => x.name || x.model).filter(Boolean) || []; modelReady = installed.includes(agent.getActiveModel()) || installed.length > 0; }
         } finally { clearTimeout(timeout); }
       } catch { /* Ollama is optional until installed. */ }
-      return json(res, 200, { online: true, model, modelReady }, origin);
+      return json(res, 200, { online: true, model: agent.getActiveModel(), requestedModel: model, modelReady }, origin);
     }
     const supplied = req.headers.authorization?.replace(/^Bearer /i, '');
     if (supplied !== token) return json(res, 401, { error: '配对码无效' }, origin);
@@ -112,7 +112,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const port = Number(process.env.PORT || 8787);
   await mkdir(workspace, { recursive: true });
   server.listen(port, host, () => {
-    console.log(`NOVA running at http://${host === '0.0.0.0' ? 'localhost' : host}:${port}`);
+    console.log(`NEXUS running at http://${host === '0.0.0.0' ? 'localhost' : host}:${port}`);
     console.log(`Local model: ${model} | Pairing code: ${token}`);
     if (host === '0.0.0.0') console.log('Phone: open http://<your-computer-LAN-IP>:8787 on the same Wi-Fi; use the pairing code above.');
   });
