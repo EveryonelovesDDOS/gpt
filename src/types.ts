@@ -16,3 +16,8 @@ export type TopologyLink = { id: string; source: string; target: string; label: 
 export type NetworkTopology = { nodes: TopologyNode[]; links: TopologyLink[]; physicalAvailable: boolean; rawPhysicalSummary: { keys: string[]; source: string } | null; generatedAt: string };
 export type SecurityAlert = { id: string; severity: string; category: string; title: string; detail: string; evidence: Record<string, unknown> };
 export type SecurityAnalysis = { posture: string; alertCount: number; criticalCount: number; highCount: number; hostCount: number; alerts: SecurityAlert[]; policy: { source: string; note: string }; checkedAt: string };
+
+export type Incident = { id: string; severity: string; category: string; title: string; detail: string; evidence: Record<string, unknown>; status: string; firstSeen: string; lastSeen: string };
+export type IncidentFrame = { id: string; at: string; posture: string; alertCount: number; incidents: Incident[] };
+export type IncidentTimeline = { current: IncidentFrame; timeline: IncidentFrame[]; generatedAt: string };
+export type DefensiveAction = { id: string; kind: string; title: string; target: string; summary: string; commands: string[]; rollback: string[]; risk: string; requiresApproval: boolean; executionMode: string; status: string; createdAt: string; decidedAt?: string; approved?: boolean; note: string };
