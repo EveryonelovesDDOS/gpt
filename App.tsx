@@ -8,10 +8,11 @@ import { Orb } from './src/Orb';
 import { ScanRing, ThinkingDots } from './src/NexusVisuals';
 import { AnimatedTabs, ContinuousDataFlow, DayBackdrop, PageTransition, PulseHalo, Reveal } from './src/AuroraMotion';
 import { TopologyScene } from './src/TopologyScene';
+import { HomePage } from './src/HomePage';
 import { AgentRun, DefensiveAction, Health, IncidentTimeline, NetworkHealth, NetworkTopology, SecurityAnalysis } from './src/types';
 import { checkHealth, decideAction, defaultEndpoint, getActions, getIncidents, getNetworkHealth, getNetworkTopology, getRun, getSecurityAnalysis, proposeAction, startRun } from './src/api';
 
-type Page = 'dashboard' | 'topology' | 'security' | 'agent' | 'settings';
+type Page = 'home' | 'dashboard' | 'topology' | 'security' | 'agent' | 'settings';
 type IconName = keyof typeof Feather.glyphMap;
 
 const P = {
@@ -103,7 +104,7 @@ function AppContent() {
   const { width } = useWindowDimensions();
   const desktop = width >= 980;
   const wide = width >= 1250;
-  const [page,setPage] = useState<Page>('dashboard');
+  const [page,setPage] = useState<Page>('home');
   const [endpoint,setEndpoint] = useState(defaultEndpoint());
   const [pair,setPair] = useState('');
   const [editEndpoint,setEditEndpoint] = useState(defaultEndpoint());
@@ -161,6 +162,7 @@ function AppContent() {
   const latestSnapshot = incidents?.timeline?.[0];
 
   const nav = useMemo(()=>[
+    { id:'home' as Page, label:'Home', icon:'home' as IconName },
     { id:'dashboard' as Page, label:'Overview', icon:'grid' as IconName },
     { id:'topology' as Page, label:'Fabric', icon:'share-2' as IconName },
     { id:'security' as Page, label:'Defend', icon:'shield' as IconName },
@@ -236,9 +238,9 @@ function AppContent() {
   const header = <View style={s.header}>
     <View style={s.brand}>
       <LinearGradient colors={[P.mint,P.lilac]} start={{x:0,y:0}} end={{x:1,y:1}} style={s.logo}><Text style={s.logoText}>N</Text></LinearGradient>
-      <View><Text style={s.brandName}>NEXUS</Text><Text style={s.brandSub}>V6 · LUMINA MOTION · NETWORK STUDIO</Text></View>
+      <View><Text style={s.brandName}>NEXUS</Text><Text style={s.brandSub}>V7 · HOME EXPERIENCE · NETWORK STUDIO</Text></View>
     </View>
-    {desktop && <AnimatedTabs items={nav} activeId={page} onSelect={(id)=>setPage(id as Page)} />}
+    {desktop && <AnimatedTabs items={nav} activeId={page} onSelect={(id)=>setPage(id as Page)} width={94} />}
     <View style={s.headerRight}>
       <View style={s.liveHeader}>{live&&<PulseHalo color={P.mint}/>}<StatusChip label={live?'LIVE':'PREVIEW'} tone={live?'good':'neutral'} /></View>
       {desktop && <Pressable onPress={refresh} style={s.iconButton}><Icon name="refresh-cw" size={15} color={P.text2} /></Pressable>}
@@ -253,6 +255,24 @@ function AppContent() {
 
     <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
       <PageTransition pageKey={page}>
+      {page==='home' && <HomePage
+        live={live}
+        stats={{
+          deviceCount: shown.deviceCount,
+          reachable: shown.reachableCount,
+          hostCount: security?.hostCount ?? hostNodes.length,
+          alertCount,
+          trustedCount,
+          guestCount,
+          protectedCount,
+        }}
+        onEnter={()=>setPage('dashboard')}
+        onOpenFabric={()=>setPage('topology')}
+        onOpenDefend={()=>setPage('security')}
+        onOpenAI={()=>setPage('agent')}
+        onOpenConnect={()=>setPage('settings')}
+      />}
+
       {page==='dashboard' && <>
         <Reveal delay={0}>
         <View style={[s.heroGrid,wide&&{flexDirection:'row'}]}>
