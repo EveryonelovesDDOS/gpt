@@ -259,23 +259,57 @@ function AppContent() {
           </>}
 
           {page === 'security' && <>
-            <View style={st.sectionRow}><View><Text style={st.eyebrow}>DEFENSIVE MONITORING</Text><Text style={st.sectionTitle}>Security posture</Text></View><Pill text={(security?.posture || 'unknown').toUpperCase()} good={security?.posture === 'normal'} /></View>
-            <Text style={st.heroBody}>NEXUS combines controller reachability with the lab VLAN plan and explicit simulation markers. These are defensive heuristics, not IDS/IPS verdicts.</Text>
+            <View style={st.sectionRow}><View><Text style={st.eyebrow}>DEFENSIVE MONITORING</Text><Text style={st.sectionTitle}>Security operations</Text></View><Pill text={(security?.posture || 'unknown').toUpperCase()} good={security?.posture === 'normal'} /></View>
+            <Text style={st.heroBody}>Live lab telemetry, incident context and approval-gated defensive planning. NEXUS labels simulation heuristics as heuristics and does not silently push IOS changes.</Text>
             <View style={[st.metrics, desktop && { flexDirection: 'row' }]}>
               <Metric label="Observed hosts" value={security?.hostCount ?? 0} icon="monitor" />
-              <Metric label="Security alerts" value={security?.alertCount ?? 0} icon="shield" />
+              <Metric label="Active alerts" value={security?.alertCount ?? 0} icon="shield" />
               <Metric label="Critical" value={security?.criticalCount ?? 0} icon="alert-octagon" />
-              <Metric label="High" value={security?.highCount ?? 0} icon="alert-triangle" />
+              <Metric label="Timeline frames" value={incidents?.timeline.length ?? 0} icon="clock" />
             </View>
-            <View style={st.securityPanel}>
-              <View style={st.sectionRow}><Text style={st.securityTitle}>Detection feed</Text><Pressable onPress={refreshNetwork}><Icon name="refresh-cw" color="#7DC3FF" size={16} /></Pressable></View>
-              {(security?.alerts || []).length ? (security?.alerts || []).map(a => <View key={a.id} style={[st.alertCard, a.severity === 'critical' && st.alertCritical]}>
-                <View style={st.alertIcon}><ScanRing danger={a.severity === 'critical'} /></View>
-                <View style={{ flex: 1 }}><View style={st.alertHead}><Text style={st.alertTitle}>{a.title}</Text><Text style={st.alertSeverity}>{a.severity.toUpperCase()}</Text></View><Text style={st.alertDetail}>{a.detail}</Text></View>
-              </View>) : <View style={st.emptySecure}><Icon name="shield" color="#68E1C4" size={28} /><Text style={st.emptySecureTitle}>No active NEXUS alerts</Text><Text style={st.emptySecureText}>No current heuristic matched. This does not mean the network has been exhaustively scanned.</Text></View>}
+
+            <View style={[st.socGrid, desktop && { flexDirection:'row' }]}>
+              <View style={st.socMain}>
+                <View style={st.securityPanel}>
+                  <View style={st.sectionRow}><Text style={st.securityTitle}>Detection feed</Text><Pressable onPress={refreshNetwork}><Icon name="refresh-cw" color="#7DC3FF" size={16} /></Pressable></View>
+                  {(security?.alerts || []).length ? (security?.alerts || []).map(a => <View key={a.id} style={[st.alertCard, a.severity === 'critical' && st.alertCritical]}>
+                    <View style={st.alertIcon}><ScanRing danger={a.severity === 'critical'} /></View>
+                    <View style={{ flex: 1 }}><View style={st.alertHead}><Text style={st.alertTitle}>{a.title}</Text><Text style={st.alertSeverity}>{a.severity.toUpperCase()}</Text></View><Text style={st.alertDetail}>{a.detail}</Text></View>
+                    <Pressable onPress={() => { setIncidentMode(true); setPage('topology'); }} style={st.inspectButton}><Text style={st.inspectButtonText}>TRACE</Text><Icon name="arrow-up-right" color="#7CCBFF" size={13} /></Pressable>
+                  </View>) : <View style={st.emptySecure}><Icon name="shield" color="#68E1C4" size={28} /><Text style={st.emptySecureTitle}>No active NEXUS alerts</Text><Text style={st.emptySecureText}>No current heuristic matched. This does not mean the network has been exhaustively scanned.</Text></View>}
+                </View>
+
+                <View style={st.timelinePanel}>
+                  <View style={st.sectionRow}><Text style={st.securityTitle}>Incident timeline</Text><Text style={st.timestamp}>rolling snapshots</Text></View>
+                  {(incidents?.timeline || []).slice(0,8).map((frame, index) => <View key={frame.id} style={st.timelineRow}>
+                    <View style={st.timelineTrack}><View style={[st.timelineDot, frame.posture === 'critical' && st.timelineDotCritical]} />{index < Math.min((incidents?.timeline.length || 0),8)-1 && <View style={st.timelineStem} />}</View>
+                    <View style={{flex:1}}><View style={st.timelineHead}><Text style={st.timelineTime}>{new Date(frame.at).toLocaleTimeString()}</Text><Text style={[st.timelinePosture, frame.posture === 'critical' && {color:'#FF8291'}]}>{frame.posture.toUpperCase()}</Text></View><Text style={st.timelineDetail}>{frame.alertCount} alert{frame.alertCount === 1 ? '' : 's'} observed in this snapshot</Text></View>
+                  </View>)}
+                </View>
+              </View>
+
+              <View style={st.socSide}>
+                <View style={st.containmentPanel}>
+                  <Text style={st.eyebrow}>CONTAINMENT PLANNER</Text><Text style={st.containmentTitle}>Defensive actions</Text><Text style={st.containmentText}>Generate a reversible IOS change plan. Approval records your decision, but execution remains preview-only until a verified write transport is connected.</Text>
+                  {[
+                    ['isolate_guest_from_server','shield','Isolate GUEST → SERVER'],
+                    ['quarantine_attacker_port','slash','Quarantine attacker port'],
+                    ['protect_management','lock','Protect MANAGEMENT'],
+                  ].map(([kind,icon,label]) => <Pressable key={kind} onPress={() => createDefensivePlan(kind)} style={st.containmentAction}><View style={st.containmentIcon}><Icon name={icon as IconName} color="#7FCBFF" size={15} /></View><Text style={st.containmentActionText}>{label}</Text><Icon name="plus" color="#66809A" size={14} /></Pressable>)}
+                </View>
+
+                {actions.slice(0,3).map(a => <View key={a.id} style={[st.planCard, a.status !== 'pending' && st.planCardDone]}>
+                  <View style={st.sectionRow}><View><Text style={st.planOverline}>{a.risk.toUpperCase()} RISK</Text><Text style={st.planTitle}>{a.title}</Text></View><Pill text={a.status.toUpperCase()} good={a.status === 'approved-preview'} /></View>
+                  <Text style={st.planSummary}>{a.summary}</Text>
+                  <View style={st.codeBox}>{a.commands.map((line,i)=><Text key={i} style={st.codeLine}>{line}</Text>)}</View>
+                  {a.status === 'pending' && <View style={st.planActions}><Pressable onPress={() => decideDefensivePlan(a.id,false)} style={st.reject}><Text style={st.rejectText}>REJECT</Text></Pressable><Pressable onPress={() => decideDefensivePlan(a.id,true)} style={st.approve}><Text style={st.approveText}>APPROVE PREVIEW</Text></Pressable></View>}
+                  <Text style={st.planNote}>{a.note}</Text>
+                </View>)}
+              </View>
             </View>
-            <Pressable onPress={() => { setPrompt('Review the current security analysis, explain every alert with evidence, and recommend defensive next checks without assuming compromise.'); setPage('agent'); }} style={st.aiStrip}>
-              <View style={st.aiIcon}><Icon name="cpu" color="#B79CFF" /></View><View style={{ flex: 1 }}><Text style={st.aiTitle}>Ask NEXUS to investigate</Text><Text style={st.aiText}>The agent can inspect live hosts, topology, segmentation and security heuristics, then explain what is observed versus inferred.</Text></View><Icon name="arrow-right" color="#B79CFF" />
+
+            <Pressable onPress={() => { setPrompt('Review the current security analysis, explain every alert with evidence, identify observed versus inferred facts, and recommend the safest defensive next checks.'); setPage('agent'); }} style={st.aiStrip}>
+              <View style={st.aiIcon}><Icon name="cpu" color="#B79CFF" /></View><View style={{ flex: 1 }}><Text style={st.aiTitle}>Launch AI incident investigation</Text><Text style={st.aiText}>NEXUS can correlate hosts, topology, segmentation and alert evidence before presenting a structured response.</Text></View><Icon name="arrow-right" color="#B79CFF" />
             </Pressable>
           </>}
 
