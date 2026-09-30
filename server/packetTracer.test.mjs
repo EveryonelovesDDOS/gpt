@@ -91,3 +91,41 @@ test('summarizes network health', async () => {
   assert.equal(health.unreachableCount, 1);
   assert.equal(health.allReachable, false);
 });
+
+
+test('discovers hosts, builds topology, and flags the lab attacker marker without claiming compromise', async () => {
+  const fetcher = async url => {
+    const value = String(url);
+    if (value.endsWith('/ticket')) return jsonResponse(200, { response: { serviceTicket: 'ticket', sessionTimeout: 3600 } });
+    if (value.endsWith('/network-device')) return jsonResponse(200, {
+      response: [
+        { id: 'core', managementIpAddress: '10.0.0.2', ipAddresses: ['10.0.0.2'], reachabilityStatus: 'Reachable', interfaceCount: '33' },
+        { id: 'edge', managementIpAddress: '10.0.0.1', ipAddresses: ['10.0.0.1','203.0.113.1'], reachabilityStatus: 'Reachable', interfaceCount: '4' },
+      ],
+    });
+    if (value.endsWith('/host')) return jsonResponse(200, {
+      response: [
+        { id: 'admin', hostName: 'ADMIN-PC', hostIp: '192.168.10.10', hostMac: 'AAAA.BBBB.0001', connectedNetworkDeviceIpAddress: '10.0.0.2', connectedInterfaceName: 'Fa0/1' },
+        { id: 'attack', hostName: 'ATTACKER-PC', hostIp: '192.168.40.10', hostMac: 'AAAA.BBBB.0004', connectedNetworkDeviceIpAddress: '10.0.0.2', connectedInterfaceName: 'Fa0/4' },
+      ],
+    });
+    if (value.endsWith('/topology/physical-topology')) return jsonResponse(404, { response: { message: 'not available' } });
+    throw new Error('unexpected request ' + value);
+  };
+
+  const client = createPacketTracerClient({ username: 'user', password: 'pass', fetcher });
+  const hosts = await client.getHosts();
+  assert.equal(hosts.length, 2);
+  assert.equal(hosts[1].zone, 'GUEST');
+  assert.equal(hosts[1].vlan, 40);
+  assert.equal(hosts[1].labThreatMarker, true);
+
+  const topology = await client.getTopology();
+  assert.equal(topology.nodes.some(node => node.label === 'ATTACKER-PC'), true);
+  assert.equal(topology.links.some(link => link.label === 'Fa0/4'), true);
+
+  const security = await client.getSecurityAnalysis();
+  assert.equal(security.posture, 'critical');
+  assert.equal(security.criticalCount, 1);
+  assert.match(security.alerts[0].detail, /simulation signal/i);
+});

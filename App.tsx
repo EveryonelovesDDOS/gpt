@@ -5,10 +5,10 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Orb } from './src/Orb';
-import { AgentRun, Health, NetworkHealth } from './src/types';
-import { checkHealth, defaultEndpoint, getNetworkHealth, getRun, startRun } from './src/api';
+import { AgentRun, Health, NetworkHealth, NetworkTopology, SecurityAnalysis } from './src/types';
+import { checkHealth, defaultEndpoint, getNetworkHealth, getNetworkTopology, getRun, getSecurityAnalysis, startRun } from './src/api';
 
-type Page = 'dashboard' | 'agent' | 'settings';
+type Page = 'dashboard' | 'topology' | 'security' | 'agent' | 'settings';
 type IconName = keyof typeof Feather.glyphMap;
 
 const previewNetwork: NetworkHealth = {
@@ -53,6 +53,8 @@ function AppContent() {
   const [editPair, setEditPair] = useState('');
   const [serverHealth, setServerHealth] = useState<Health | null>(null);
   const [network, setNetwork] = useState<NetworkHealth | null>(null);
+  const [topology, setTopology] = useState<NetworkTopology | null>(null);
+  const [security, setSecurity] = useState<SecurityAnalysis | null>(null);
   const [connected, setConnected] = useState(false);
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
@@ -69,7 +71,7 @@ function AppContent() {
   useEffect(() => {
     if (!connected) return;
     const timer = setInterval(() => {
-      getNetworkHealth(endpoint, pair).then(setNetwork).catch(() => {});
+      Promise.all([getNetworkHealth(endpoint, pair), getNetworkTopology(endpoint, pair), getSecurityAnalysis(endpoint, pair)]).then(([n,t,s]) => { setNetwork(n); setTopology(t); setSecurity(s); }).catch(() => {});
     }, 4000);
     return () => clearInterval(timer);
   }, [connected, endpoint, pair]);
@@ -91,8 +93,8 @@ function AppContent() {
       const url = editEndpoint.trim().replace(/\/$/, '');
       const token = editPair.trim();
       const h = await checkHealth(url);
-      const n = await getNetworkHealth(url, token);
-      setEndpoint(url); setPair(token); setServerHealth(h); setNetwork(n); setConnected(true);
+      const [n, t, s] = await Promise.all([getNetworkHealth(url, token), getNetworkTopology(url, token), getSecurityAnalysis(url, token)]);
+      setEndpoint(url); setPair(token); setServerHealth(h); setNetwork(n); setTopology(t); setSecurity(s); setConnected(true);
       await AsyncStorage.multiSet([['@nexus/endpoint', url], ['@nexus/pair', token]]);
       setNotice('Connected to NEXUS and Packet Tracer Controller.');
       setPage('dashboard');
@@ -105,7 +107,7 @@ function AppContent() {
   async function refreshNetwork() {
     if (!connected) return setPage('settings');
     setBusy(true);
-    try { setNetwork(await getNetworkHealth(endpoint, pair)); }
+    try { const [n,t,s] = await Promise.all([getNetworkHealth(endpoint, pair), getNetworkTopology(endpoint, pair), getSecurityAnalysis(endpoint, pair)]); setNetwork(n); setTopology(t); setSecurity(s); }
     catch (e) { setNotice(e instanceof Error ? e.message : 'Refresh failed'); }
     finally { setBusy(false); }
   }
@@ -123,6 +125,8 @@ function AppContent() {
 
   const navigation = useMemo(() => [
     { id: 'dashboard' as Page, label: 'Dashboard', icon: 'activity' as IconName },
+    { id: 'topology' as Page, label: 'Topology', icon: 'git-branch' as IconName },
+    { id: 'security' as Page, label: 'Security', icon: 'shield' as IconName },
     { id: 'agent' as Page, label: 'AI Agent', icon: 'command' as IconName },
     { id: 'settings' as Page, label: 'Settings', icon: 'sliders' as IconName },
   ], []);
@@ -209,6 +213,50 @@ function AppContent() {
             </View>
           </>}
 
+          {page === 'topology' && <>
+            <View style={st.sectionRow}><View><Text style={st.eyebrow}>LIVE NETWORK MAP</Text><Text style={st.sectionTitle}>Topology</Text></View><Pill text={topology ? 'LIVE GRAPH' : 'NO LIVE DATA'} good={!!topology} /></View>
+            <Text style={st.heroBody}>This view combines controller-discovered devices and hosts with the known lab backbone. Links marked inferred are derived from the current lab model when Packet Tracer does not expose a direct host attachment.</Text>
+            <View style={st.topologyBoard}>
+              <View style={st.topologyCoreRow}>
+                {(topology?.nodes || []).filter(n => n.kind === 'device').map(n => <View key={n.id} style={[st.topologyNode, n.role === 'edge-router' && st.topologyNodeEdge]}>
+                  <View style={st.topologyNodeIcon}><Icon name={n.role === 'edge-router' ? 'share-2' : 'layers'} color="#7BC3FF" size={20} /></View>
+                  <Text style={st.topologyNodeName}>{n.label}</Text><Text style={st.topologyNodeMeta}>{n.ip || n.zone}</Text>
+                </View>)}
+              </View>
+              <View style={st.topologyLine}><View style={st.topologyPulse} /></View>
+              <View style={st.hostGrid}>
+                {(topology?.nodes || []).filter(n => n.kind === 'host').map(n => <View key={n.id} style={[st.hostNode, n.role === 'attacker' && st.hostNodeThreat]}>
+                  <Icon name={n.role === 'attacker' ? 'alert-triangle' : 'monitor'} color={n.role === 'attacker' ? '#FF8D9A' : '#79BDFF'} size={17} />
+                  <Text style={st.hostName}>{n.label}</Text>
+                  <Text style={st.hostMeta}>{n.ip || 'No IP'} · {n.zone}</Text>
+                  {n.vlan ? <Text style={st.hostVlan}>VLAN {n.vlan}</Text> : null}
+                </View>)}
+              </View>
+            </View>
+            <View style={st.legendCard}><Text style={st.legendTitle}>Link intelligence</Text>{(topology?.links || []).slice(0,12).map(l => <View key={l.id} style={st.linkRow}><View style={st.linkDot} /><Text style={st.linkText}>{l.label || 'Network link'}</Text><Text style={st.linkSource}>{l.sourceType}</Text></View>)}</View>
+          </>}
+
+          {page === 'security' && <>
+            <View style={st.sectionRow}><View><Text style={st.eyebrow}>DEFENSIVE MONITORING</Text><Text style={st.sectionTitle}>Security posture</Text></View><Pill text={(security?.posture || 'unknown').toUpperCase()} good={security?.posture === 'normal'} /></View>
+            <Text style={st.heroBody}>NEXUS combines controller reachability with the lab VLAN plan and explicit simulation markers. These are defensive heuristics, not IDS/IPS verdicts.</Text>
+            <View style={[st.metrics, desktop && { flexDirection: 'row' }]}>
+              <Metric label="Observed hosts" value={security?.hostCount ?? 0} icon="monitor" />
+              <Metric label="Security alerts" value={security?.alertCount ?? 0} icon="shield" />
+              <Metric label="Critical" value={security?.criticalCount ?? 0} icon="alert-octagon" />
+              <Metric label="High" value={security?.highCount ?? 0} icon="alert-triangle" />
+            </View>
+            <View style={st.securityPanel}>
+              <View style={st.sectionRow}><Text style={st.securityTitle}>Detection feed</Text><Pressable onPress={refreshNetwork}><Icon name="refresh-cw" color="#7DC3FF" size={16} /></Pressable></View>
+              {(security?.alerts || []).length ? (security?.alerts || []).map(a => <View key={a.id} style={[st.alertCard, a.severity === 'critical' && st.alertCritical]}>
+                <View style={st.alertIcon}><Icon name={a.severity === 'critical' ? 'alert-octagon' : a.severity === 'high' ? 'alert-triangle' : 'info'} color={a.severity === 'critical' ? '#FF7E8D' : a.severity === 'high' ? '#FFC66D' : '#79BDFF'} /></View>
+                <View style={{ flex: 1 }}><View style={st.alertHead}><Text style={st.alertTitle}>{a.title}</Text><Text style={st.alertSeverity}>{a.severity.toUpperCase()}</Text></View><Text style={st.alertDetail}>{a.detail}</Text></View>
+              </View>) : <View style={st.emptySecure}><Icon name="shield" color="#68E1C4" size={28} /><Text style={st.emptySecureTitle}>No active NEXUS alerts</Text><Text style={st.emptySecureText}>No current heuristic matched. This does not mean the network has been exhaustively scanned.</Text></View>}
+            </View>
+            <Pressable onPress={() => { setPrompt('Review the current security analysis, explain every alert with evidence, and recommend defensive next checks without assuming compromise.'); setPage('agent'); }} style={st.aiStrip}>
+              <View style={st.aiIcon}><Icon name="cpu" color="#B79CFF" /></View><View style={{ flex: 1 }}><Text style={st.aiTitle}>Ask NEXUS to investigate</Text><Text style={st.aiText}>The agent can inspect live hosts, topology, segmentation and security heuristics, then explain what is observed versus inferred.</Text></View><Icon name="arrow-right" color="#B79CFF" />
+            </Pressable>
+          </>}
+
           {page === 'agent' && <>
             <View style={st.agentHero}><View><Text style={st.eyebrow}>AGENTIC NETWORK OPS</Text><Text style={st.sectionTitle}>Ask the network directly.</Text><Text style={st.heroBody}>The local model can call NEXUS network tools and reason over the Packet Tracer controller inventory.</Text></View><Orb size={130} active={!!run && ['thinking','resuming'].includes(run.status)} /></View>
             <View style={st.promptCard}>
@@ -264,5 +312,25 @@ const st = StyleSheet.create({
   agentHero: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }, promptCard: { backgroundColor: '#101B2A', borderWidth: 1, borderColor: '#31506F', borderRadius: 16, flexDirection: 'row', alignItems: 'center', paddingLeft: 15 }, prompt: { flex: 1, minHeight: 58, maxHeight: 130, color: '#EEF6FF', fontSize: 13, paddingVertical: 13 }, send: { width: 38, height: 38, borderRadius: 11, backgroundColor: '#78BDFF', alignItems: 'center', justifyContent: 'center', marginRight: 10 }, quickRow: { gap: 8, marginTop: 12, marginBottom: 22 }, quick: { borderWidth: 1, borderColor: '#25384F', backgroundColor: '#0F1825', borderRadius: 12, padding: 12 }, quickText: { color: '#91A8C1', fontSize: 11 },
   runCard: { borderRadius: 19, borderWidth: 1, borderColor: '#263950', backgroundColor: '#101A28', padding: 18 }, runTitle: { color: '#EDF5FF', fontWeight: '800', fontSize: 13, flex: 1 }, event: { flexDirection: 'row', gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#1D2D41' }, eventTitle: { color: '#DDE9F8', fontSize: 11, fontWeight: '800' }, eventText: { color: '#7E91A8', fontSize: 10, lineHeight: 16, marginTop: 3 }, answer: { backgroundColor: '#13253A', borderRadius: 13, padding: 15, marginTop: 14 }, answerLabel: { color: '#79BDFF', fontSize: 9, fontWeight: '900', letterSpacing: 1.5 }, answerText: { color: '#D6E3F2', fontSize: 12, lineHeight: 20, marginTop: 8 },
   settingsCard: { backgroundColor: '#101A28', borderWidth: 1, borderColor: '#273950', borderRadius: 19, padding: 20, marginTop: 24, maxWidth: 650 }, fieldLabel: { color: '#DDE8F5', fontWeight: '800', fontSize: 11, marginTop: 10 }, field: { color: '#EAF3FF', backgroundColor: '#0A131E', borderWidth: 1, borderColor: '#2A3F58', borderRadius: 11, padding: 13, marginTop: 8, marginBottom: 12 }, connect: { backgroundColor: '#79BDFF', borderRadius: 11, padding: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 8 }, connectText: { color: '#06111C', fontWeight: '900', fontSize: 12 }, connection: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 15 }, connectionText: { color: '#8194AB', fontSize: 10 },
+  topologyBoard: { marginTop: 22, borderRadius: 22, borderWidth: 1, borderColor: '#263A52', backgroundColor: '#0D1826', padding: 20, overflow: 'hidden' },
+  topologyCoreRow: { flexDirection: 'row', gap: 12, justifyContent: 'center', flexWrap: 'wrap' },
+  topologyNode: { minWidth: 170, borderWidth: 1, borderColor: '#2C4A68', backgroundColor: '#132238', borderRadius: 16, padding: 15, alignItems: 'center' },
+  topologyNodeEdge: { borderColor: '#514776', backgroundColor: '#19182C' },
+  topologyNodeIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#17304B', alignItems: 'center', justifyContent: 'center', marginBottom: 9 },
+  topologyNodeName: { color: '#F0F6FF', fontSize: 13, fontWeight: '900' }, topologyNodeMeta: { color: '#7790AA', fontSize: 9, marginTop: 4 },
+  topologyLine: { height: 34, alignItems: 'center', justifyContent: 'center' }, topologyPulse: { width: 2, height: 34, backgroundColor: '#385A7A', borderRadius: 2 },
+  hostGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 9, justifyContent: 'center' },
+  hostNode: { width: 145, minHeight: 105, borderWidth: 1, borderColor: '#243A53', backgroundColor: '#111D2C', borderRadius: 14, padding: 12 },
+  hostNodeThreat: { borderColor: '#7D3F4B', backgroundColor: '#28151B' }, hostName: { color: '#E7F0FC', fontSize: 11, fontWeight: '800', marginTop: 8 },
+  hostMeta: { color: '#758AA3', fontSize: 8.5, marginTop: 4 }, hostVlan: { color: '#7CC4FF', fontSize: 8, fontWeight: '900', marginTop: 8, letterSpacing: .7 },
+  legendCard: { marginTop: 14, borderWidth: 1, borderColor: '#24364D', backgroundColor: '#101926', borderRadius: 16, padding: 16, marginBottom: 24 },
+  legendTitle: { color: '#EAF3FF', fontSize: 12, fontWeight: '900', marginBottom: 10 }, linkRow: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: '#1A2A3D' },
+  linkDot: { width: 6, height: 6, borderRadius: 4, backgroundColor: '#6FC6FF' }, linkText: { flex: 1, color: '#9FB2C8', fontSize: 10 }, linkSource: { color: '#637A94', fontSize: 8, textTransform: 'uppercase' },
+  securityPanel: { borderWidth: 1, borderColor: '#293A51', backgroundColor: '#101925', borderRadius: 18, padding: 17, marginBottom: 18 }, securityTitle: { color: '#EEF5FF', fontSize: 14, fontWeight: '900' },
+  alertCard: { flexDirection: 'row', gap: 12, borderWidth: 1, borderColor: '#4A3E2B', backgroundColor: '#211C16', borderRadius: 14, padding: 14, marginTop: 10 },
+  alertCritical: { borderColor: '#6D3440', backgroundColor: '#25151A' }, alertIcon: { width: 35, height: 35, borderRadius: 10, backgroundColor: '#161C26', alignItems: 'center', justifyContent: 'center' },
+  alertHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }, alertTitle: { color: '#EEF4FC', fontSize: 11, fontWeight: '900', flex: 1 },
+  alertSeverity: { color: '#FFB77A', fontSize: 8, fontWeight: '900', letterSpacing: .8 }, alertDetail: { color: '#9AABBD', fontSize: 9.5, lineHeight: 15, marginTop: 5 },
+  emptySecure: { alignItems: 'center', paddingVertical: 28 }, emptySecureTitle: { color: '#DFF8F1', fontSize: 13, fontWeight: '900', marginTop: 10 }, emptySecureText: { color: '#71879F', fontSize: 9.5, lineHeight: 15, marginTop: 5, textAlign: 'center', maxWidth: 360 },
   bottomNav: { height: 66, borderTopWidth: 1, borderTopColor: '#1B2A3D', backgroundColor: '#0A131E', flexDirection: 'row', justifyContent: 'space-around', paddingTop: 8 }, bottomItem: { alignItems: 'center', width: 85 }, bottomText: { color: '#687B95', fontSize: 9, marginTop: 5, fontWeight: '700' },
 });

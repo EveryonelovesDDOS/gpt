@@ -74,6 +74,9 @@ export function createServer({
     try {
       if (url.pathname === '/api/network/devices' && req.method === 'GET') return json(res, 200, { devices: await networkClient.getNetworkDevices() }, origin);
       if (url.pathname === '/api/network/health' && req.method === 'GET') return json(res, 200, await networkClient.getNetworkHealth(), origin);
+      if (url.pathname === '/api/network/hosts' && req.method === 'GET') return json(res, 200, { hosts: await networkClient.getHosts() }, origin);
+      if (url.pathname === '/api/network/topology' && req.method === 'GET') return json(res, 200, await networkClient.getTopology(), origin);
+      if (url.pathname === '/api/network/security' && req.method === 'GET') return json(res, 200, await networkClient.getSecurityAnalysis(), origin);
       if (url.pathname === '/api/files' && req.method === 'GET') {
         const files = await listFiles(workspace); return json(res, 200, { files }, origin);
       }
