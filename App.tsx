@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Orb } from './src/Orb';
 import { ScanRing, ThinkingDots } from './src/NexusVisuals';
-import { AnimatedTabs, DayBackdrop, PageTransition, PulseHalo } from './src/AuroraMotion';
+import { AnimatedTabs, ContinuousDataFlow, DayBackdrop, PageTransition, PulseHalo, Reveal } from './src/AuroraMotion';
 import { TopologyScene } from './src/TopologyScene';
 import { AgentRun, DefensiveAction, Health, IncidentTimeline, NetworkHealth, NetworkTopology, SecurityAnalysis } from './src/types';
 import { checkHealth, decideAction, defaultEndpoint, getActions, getIncidents, getNetworkHealth, getNetworkTopology, getRun, getSecurityAnalysis, proposeAction, startRun } from './src/api';
@@ -15,21 +15,21 @@ type Page = 'dashboard' | 'topology' | 'security' | 'agent' | 'settings';
 type IconName = keyof typeof Feather.glyphMap;
 
 const P = {
-  bg: '#F4F7FB',
+  bg: '#EEF3FA',
   panel: '#FFFFFF',
-  panel2: '#F8FAFD',
-  border: '#DDE5EF',
-  borderStrong: '#CAD5E4',
-  mint: '#43CDAA',
-  mintSoft: '#E3F8F1',
-  lilac: '#776BFF',
-  lilacSoft: '#EFEDFF',
-  coral: '#FF657C',
-  amber: '#F0A94B',
-  text: '#172033',
-  text2: '#44536A',
-  muted: '#6F7D91',
-  muted2: '#95A2B4',
+  panel2: '#F6F9FD',
+  border: '#CBD7E6',
+  borderStrong: '#B9C8DA',
+  mint: '#16B88F',
+  mintSoft: '#DFF7EF',
+  lilac: '#635BFF',
+  lilacSoft: '#E9E7FF',
+  coral: '#F04F6D',
+  amber: '#D98A1D',
+  text: '#0F1B2D',
+  text2: '#33445C',
+  muted: '#5C6C82',
+  muted2: '#8694A8',
 };
 
 const previewNetwork: NetworkHealth = {
@@ -154,6 +154,11 @@ function AppContent() {
   const live = connected && !!network;
   const alertCount = security?.alertCount ?? 0;
   const posture = security?.posture || (alertCount ? 'warning' : 'normal');
+  const hostNodes = topology?.nodes.filter(n => n.kind === 'host') || [];
+  const trustedCount = hostNodes.filter(n => ['ADMIN','FINANCE','STAFF'].includes(n.zone)).length;
+  const guestCount = hostNodes.filter(n => n.zone === 'GUEST').length;
+  const protectedCount = hostNodes.filter(n => ['SERVER','PUBLIC','MANAGEMENT'].includes(n.zone)).length;
+  const latestSnapshot = incidents?.timeline?.[0];
 
   const nav = useMemo(()=>[
     { id:'dashboard' as Page, label:'Overview', icon:'grid' as IconName },
@@ -231,7 +236,7 @@ function AppContent() {
   const header = <View style={s.header}>
     <View style={s.brand}>
       <LinearGradient colors={[P.mint,P.lilac]} start={{x:0,y:0}} end={{x:1,y:1}} style={s.logo}><Text style={s.logoText}>N</Text></LinearGradient>
-      <View><Text style={s.brandName}>NEXUS</Text><Text style={s.brandSub}>V5 · AURORA DAY · NETWORK STUDIO</Text></View>
+      <View><Text style={s.brandName}>NEXUS</Text><Text style={s.brandSub}>V6 · LUMINA MOTION · NETWORK STUDIO</Text></View>
     </View>
     {desktop && <AnimatedTabs items={nav} activeId={page} onSelect={(id)=>setPage(id as Page)} />}
     <View style={s.headerRight}>
@@ -249,6 +254,7 @@ function AppContent() {
     <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
       <PageTransition pageKey={page}>
       {page==='dashboard' && <>
+        <Reveal delay={0}>
         <View style={[s.heroGrid,wide&&{flexDirection:'row'}]}>
           <LinearGradient colors={['#FFFFFF','#F2F6FF']} start={{x:0,y:0}} end={{x:1,y:1}} style={s.heroMain}>
             <View style={s.heroBadge}><View style={s.heroBadgeDot}/><Text style={s.heroBadgeText}>REAL-TIME LOCAL INTELLIGENCE</Text></View>
@@ -265,14 +271,66 @@ function AppContent() {
             <View style={s.pulseFooter}><View><Text style={s.pulseNumber}>{shown.reachableCount}/{shown.deviceCount}</Text><Text style={s.pulseLabel}>devices reachable</Text></View><View><Text style={[s.pulseNumber,{color:alertCount?P.coral:P.mint}]}>{alertCount}</Text><Text style={s.pulseLabel}>active alerts</Text></View></View>
           </View>
         </View>
+        </Reveal>
 
+        <Reveal delay={70}>
+          <ContinuousDataFlow label="LIVE PACKET FLOW" sublabel={live ? 'Packet Tracer controller → fabric → endpoint context' : 'Preview stream · connect the lab for live telemetry'} />
+        </Reveal>
+
+        <Reveal delay={140}>
         <View style={[s.metricGrid,desktop&&{flexDirection:'row'}]}>
           <Metric label="Network devices" value={shown.deviceCount} hint="DISCOVERED" icon="server" />
           <Metric label="Reachable" value={shown.reachableCount} hint="HEALTH" icon="check-circle" />
           <Metric label="Observed hosts" value={security?.hostCount ?? 0} hint="ENDPOINTS" icon="monitor" tone="purple" />
           <Metric label="Security alerts" value={alertCount} hint={alertCount?'REVIEW':'CLEAR'} icon="shield" tone={alertCount?'coral':'mint'} />
         </View>
+        </Reveal>
 
+        <Reveal delay={210}>
+        <View style={[s.insightGrid,wide&&{flexDirection:'row'}]}>
+          <View style={[s.insightCard,s.insightMint]}>
+            <View style={s.insightIcon}><Icon name="users" size={17} color={P.mint}/></View>
+            <Text style={s.insightValue}>{trustedCount}</Text>
+            <Text style={s.insightTitle}>Trusted endpoints</Text>
+            <Text style={s.insightText}>ADMIN, FINANCE and STAFF zones currently visible to NEXUS.</Text>
+          </View>
+          <View style={[s.insightCard,s.insightCoral]}>
+            <View style={[s.insightIcon,{backgroundColor:'#FFF0F3'}]}><Icon name="alert-triangle" size={17} color={P.coral}/></View>
+            <Text style={s.insightValue}>{guestCount}</Text>
+            <Text style={s.insightTitle}>Guest / untrusted</Text>
+            <Text style={s.insightText}>{guestCount ? 'Untrusted-zone context is active and ready for incident tracing.' : 'No guest-zone endpoint is currently visible.'}</Text>
+          </View>
+          <View style={[s.insightCard,s.insightViolet]}>
+            <View style={[s.insightIcon,{backgroundColor:P.lilacSoft}]}><Icon name="database" size={17} color={P.lilac}/></View>
+            <Text style={s.insightValue}>{protectedCount}</Text>
+            <Text style={s.insightTitle}>Protected services</Text>
+            <Text style={s.insightText}>SERVER, PUBLIC and MANAGEMENT context grouped for quick review.</Text>
+          </View>
+          <View style={[s.insightCard,s.insightBlue]}>
+            <View style={[s.insightIcon,{backgroundColor:'#E8F3FF'}]}><Icon name="clock" size={17} color="#3B82F6"/></View>
+            <Text style={s.insightValue}>{latestSnapshot ? new Date(latestSnapshot.at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '--:--'}</Text>
+            <Text style={s.insightTitle}>Latest telemetry snapshot</Text>
+            <Text style={s.insightText}>{latestSnapshot ? latestSnapshot.alertCount + ' alert signals captured in the most recent frame.' : 'Waiting for a live incident snapshot.'}</Text>
+          </View>
+        </View>
+        </Reveal>
+
+        <Reveal delay={280}>
+        <View style={[s.commandShelf,wide&&{flexDirection:'row'}]}>
+          <View style={s.commandShelfCopy}>
+            <Text style={s.overline}>QUICK OPERATIONS</Text>
+            <Text style={s.commandShelfTitle}>Move from signal to action faster.</Text>
+            <Text style={s.commandShelfText}>Jump directly into the most useful operator workflows without searching through menus.</Text>
+          </View>
+          <View style={s.commandShelfActions}>
+            <Pressable onPress={()=>setPage('topology')} style={s.commandAction}><View style={[s.commandActionIcon,{backgroundColor:P.mintSoft}]}><Icon name="share-2" size={16} color={P.mint}/></View><View><Text style={s.commandActionTitle}>Open live fabric</Text><Text style={s.commandActionSub}>Trust zones & packet path</Text></View></Pressable>
+            <Pressable onPress={()=>{setIncidentMode(true);setPage('topology')}} style={s.commandAction}><View style={[s.commandActionIcon,{backgroundColor:'#FFF0F3'}]}><Icon name="zap" size={16} color={P.coral}/></View><View><Text style={s.commandActionTitle}>Trace incident</Text><Text style={s.commandActionSub}>Focus guest-zone context</Text></View></Pressable>
+            <Pressable onPress={()=>setPage('agent')} style={s.commandAction}><View style={[s.commandActionIcon,{backgroundColor:P.lilacSoft}]}><Icon name="command" size={16} color={P.lilac}/></View><View><Text style={s.commandActionTitle}>Ask NEXUS AI</Text><Text style={s.commandActionSub}>Evidence-aware investigation</Text></View></Pressable>
+          </View>
+        </View>
+        </Reveal>
+
+        <Reveal delay={350}>
         <View style={[s.dashboardLower,wide&&{flexDirection:'row'}]}>
           <View style={s.dashboardMain}>
             <SectionTitle overline="FABRIC SNAPSHOT" title="Network in context" right={<Pressable onPress={()=>setPage('topology')} style={s.textButton}><Text style={s.textButtonText}>OPEN FABRIC</Text><Icon name="arrow-right" size={13} color={P.mint}/></Pressable>} />
@@ -295,6 +353,7 @@ function AppContent() {
             </View>
           </View>
         </View>
+        </Reveal>
       </>}
 
       {page==='topology' && <>
@@ -369,7 +428,7 @@ function AppContent() {
 
         <View style={[s.agentGrid,wide&&{flexDirection:'row'}]}>
           <View style={s.agentMain}>
-            <LinearGradient colors={['#18161F','#101015']} style={s.agentComposer}>
+            <LinearGradient colors={['#FFFFFF','#F2F0FF']} style={s.agentComposer}>
               <View style={s.agentComposerTop}><View><Text style={s.panelOverline}>COMMAND SURFACE</Text><Text style={s.agentComposerTitle}>What should NEXUS investigate?</Text></View><View style={s.miniOrb}><Orb size={82} active={busy||!!run&&['thinking','resuming'].includes(run.status)}/></View></View>
               <View style={s.promptBox}>
                 <TextInput value={prompt} onChangeText={setPrompt} multiline placeholder="Ask about topology, segmentation, reachability, attacker context or security posture…" placeholderTextColor={P.muted2} style={s.promptInput}/>
@@ -446,33 +505,42 @@ const s = StyleSheet.create({
   bgOrbA:{position:'absolute'},
   bgOrbB:{position:'absolute'},
   header:{height:82,borderBottomWidth:1,borderBottomColor:P.border,backgroundColor:'rgba(255,255,255,.88)',paddingHorizontal:26,flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:18,shadowColor:'#627087',shadowOpacity:.08,shadowRadius:18,shadowOffset:{width:0,height:8},zIndex:10},
-  brand:{flexDirection:'row',alignItems:'center',gap:11},logo:{width:40,height:40,borderRadius:13,alignItems:'center',justifyContent:'center'},logoText:{color:'#172033',fontSize:24,fontWeight:'900'},brandName:{color:P.text,fontSize:17,fontWeight:'900',letterSpacing:2.4},brandSub:{color:P.muted,fontSize:6.8,fontWeight:'800',letterSpacing:1.1,marginTop:3},
+  brand:{flexDirection:'row',alignItems:'center',gap:11},logo:{width:40,height:40,borderRadius:13,alignItems:'center',justifyContent:'center'},logoText:{color:'#172033',fontSize:24,fontWeight:'900'},brandName:{color:P.text,fontSize:17,fontWeight:'900',letterSpacing:2.4},brandSub:{color:'#65748A',fontSize:6.8,fontWeight:'800',letterSpacing:1.1,marginTop:3},
   tabs:{flexDirection:'row',alignItems:'center',gap:5,backgroundColor:'#FFFFFF',borderWidth:1,borderColor:P.border,borderRadius:14,padding:4},
   tab:{flexDirection:'row',alignItems:'center',gap:7,paddingHorizontal:12,paddingVertical:9,borderRadius:10},tabActive:{backgroundColor:'#EAF0FF'},tabText:{color:P.muted,fontSize:9.5,fontWeight:'800'},tabTextActive:{color:P.text},
   headerRight:{flexDirection:'row',alignItems:'center',gap:9},liveHeader:{flexDirection:'row',alignItems:'center',gap:7},iconButton:{width:36,height:36,borderRadius:11,borderWidth:1,borderColor:P.border,backgroundColor:P.panel,alignItems:'center',justifyContent:'center'},
   statusChip:{flexDirection:'row',alignItems:'center',gap:7,borderWidth:1,borderRadius:20,paddingHorizontal:10,paddingVertical:6},statusDot:{width:6,height:6,borderRadius:6},statusText:{fontSize:7.5,fontWeight:'900',letterSpacing:.8},
   notice:{marginHorizontal:20,marginTop:12,borderWidth:1,borderColor:'#E5C990',backgroundColor:'#FFF8E9',borderRadius:12,padding:11,flexDirection:'row',alignItems:'center',gap:9},noticeText:{flex:1,color:'#8B6325',fontSize:9.5},
   scroll:{padding:24,paddingBottom:90,maxWidth:1500,width:'100%',alignSelf:'center'},
-  sectionHead:{flexDirection:'row',alignItems:'flex-end',justifyContent:'space-between',gap:14,marginBottom:16},overline:{color:P.mint,fontSize:8,fontWeight:'900',letterSpacing:1.7},sectionTitle:{color:P.text,fontSize:26,fontWeight:'900',marginTop:5,letterSpacing:-.4},pageIntro:{color:P.text2,fontSize:10.5,lineHeight:17,maxWidth:760,marginTop:-7,marginBottom:20},
-  heroGrid:{gap:14,marginBottom:14},heroMain:{flex:1.6,minHeight:330,borderWidth:1,borderColor:P.borderStrong,borderRadius:28,padding:28,justifyContent:'center'},heroBadge:{flexDirection:'row',alignItems:'center',gap:8,marginBottom:20},heroBadgeDot:{width:7,height:7,borderRadius:7,backgroundColor:P.mint},heroBadgeText:{color:P.mintSoft,fontSize:8,fontWeight:'900',letterSpacing:1.5},heroTitle:{color:P.text,fontSize:42,lineHeight:50,fontWeight:'900',letterSpacing:-1.2},heroTitleAccent:{color:P.lilacSoft},heroText:{color:P.text2,fontSize:11.5,lineHeight:19,maxWidth:650,marginTop:14},heroActions:{flexDirection:'row',gap:10,marginTop:24,flexWrap:'wrap'},
-  primary:{backgroundColor:P.mint,borderRadius:12,paddingHorizontal:16,paddingVertical:12,flexDirection:'row',alignItems:'center',gap:9},primaryText:{color:'#172033',fontSize:9.5,fontWeight:'900',letterSpacing:.6},secondary:{borderWidth:1,borderColor:'#C9D3E1',backgroundColor:'#17151D',borderRadius:12,paddingHorizontal:16,paddingVertical:12,flexDirection:'row',alignItems:'center',gap:8},secondaryText:{color:P.lilac,fontSize:9.5,fontWeight:'900',letterSpacing:.5},
-  pulseCard:{flex:1,minWidth:300,borderWidth:1,borderColor:P.border,borderRadius:28,backgroundColor:P.panel,padding:20},pulseTop:{flexDirection:'row',justifyContent:'space-between',gap:12,alignItems:'flex-start'},pulseTitle:{color:P.text,fontSize:16,fontWeight:'900',marginTop:5},orbWrap:{alignItems:'center',justifyContent:'center',flex:1,minHeight:190},pulseFooter:{flexDirection:'row',justifyContent:'space-around',borderTopWidth:1,borderTopColor:P.border,paddingTop:14},pulseNumber:{color:P.text,fontSize:21,fontWeight:'900',textAlign:'center'},pulseLabel:{color:P.muted,fontSize:8.5,marginTop:3,textAlign:'center'},
-  metricGrid:{gap:10,marginBottom:24},metric:{flex:1,minHeight:126,borderWidth:1,borderColor:P.border,backgroundColor:'rgba(255,255,255,.90)',borderRadius:20,padding:16,shadowColor:'#65748A',shadowOpacity:.07,shadowRadius:16,shadowOffset:{width:0,height:8}},metricTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},metricIcon:{width:34,height:34,borderRadius:10,alignItems:'center',justifyContent:'center'},metricTrend:{fontSize:7,fontWeight:'900',letterSpacing:.8},metricValue:{color:P.text,fontSize:25,fontWeight:'900',marginTop:15},metricLabel:{color:P.muted,fontSize:9.5,marginTop:4},
+  sectionHead:{flexDirection:'row',alignItems:'flex-end',justifyContent:'space-between',gap:14,marginBottom:16},overline:{color:P.mint,fontSize:8,fontWeight:'900',letterSpacing:1.7},sectionTitle:{color:'#0F1B2D',fontSize:26,fontWeight:'900',marginTop:5,letterSpacing:-.4},pageIntro:{color:'#42526B',fontSize:10.5,lineHeight:17,maxWidth:760,marginTop:-7,marginBottom:20},
+  heroGrid:{gap:14,marginBottom:14},heroMain:{flex:1.6,minHeight:330,borderWidth:1,borderColor:P.borderStrong,borderRadius:28,padding:30,justifyContent:'center',shadowColor:'#66758C',shadowOpacity:.08,shadowRadius:24,shadowOffset:{width:0,height:10}},heroBadge:{flexDirection:'row',alignItems:'center',gap:8,marginBottom:20},heroBadgeDot:{width:7,height:7,borderRadius:7,backgroundColor:P.mint},heroBadgeText:{color:'#12876A',fontSize:8,fontWeight:'900',letterSpacing:1.5},heroTitle:{color:P.text,fontSize:42,lineHeight:50,fontWeight:'900',letterSpacing:-1.2},heroTitleAccent:{color:P.lilac},heroText:{color:P.text2,fontSize:11.5,lineHeight:19,maxWidth:650,marginTop:14},heroActions:{flexDirection:'row',gap:10,marginTop:24,flexWrap:'wrap'},
+  primary:{backgroundColor:'#25C39B',borderRadius:12,paddingHorizontal:16,paddingVertical:12,flexDirection:'row',alignItems:'center',gap:9},primaryText:{color:'#172033',fontSize:9.5,fontWeight:'900',letterSpacing:.6},secondary:{borderWidth:1,borderColor:'#C8D2E0',backgroundColor:'#FFFFFF',borderRadius:12,paddingHorizontal:16,paddingVertical:12,flexDirection:'row',alignItems:'center',gap:8},secondaryText:{color:'#5449E8',fontSize:9.5,fontWeight:'900',letterSpacing:.5},
+  pulseCard:{flex:1,minWidth:300,borderWidth:1,borderColor:P.border,borderRadius:28,backgroundColor:'rgba(255,255,255,.96)',padding:20,shadowColor:'#66758C',shadowOpacity:.08,shadowRadius:24,shadowOffset:{width:0,height:10}},pulseTop:{flexDirection:'row',justifyContent:'space-between',gap:12,alignItems:'flex-start'},pulseTitle:{color:'#0F1B2D',fontSize:16,fontWeight:'900',marginTop:5},orbWrap:{alignItems:'center',justifyContent:'center',flex:1,minHeight:190},pulseFooter:{flexDirection:'row',justifyContent:'space-around',borderTopWidth:1,borderTopColor:P.border,paddingTop:14},pulseNumber:{color:P.text,fontSize:21,fontWeight:'900',textAlign:'center'},pulseLabel:{color:'#65748A',fontSize:8.5,marginTop:3,textAlign:'center'},
+  metricGrid:{gap:10,marginBottom:24},metric:{flex:1,minHeight:126,borderWidth:1,borderColor:P.border,backgroundColor:'rgba(255,255,255,.90)',borderRadius:20,padding:16,shadowColor:'#65748A',shadowOpacity:.07,shadowRadius:16,shadowOffset:{width:0,height:8}},metricTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},metricIcon:{width:34,height:34,borderRadius:10,alignItems:'center',justifyContent:'center'},metricTrend:{fontSize:7,fontWeight:'900',letterSpacing:.8},metricValue:{color:P.text,fontSize:25,fontWeight:'900',marginTop:15},metricLabel:{color:'#607086',fontSize:9.5,marginTop:4},
+  insightGrid:{gap:10,marginBottom:18},
+  insightCard:{flex:1,minWidth:220,borderWidth:1,borderColor:P.border,backgroundColor:'rgba(255,255,255,.94)',borderRadius:20,padding:16,shadowColor:'#66758C',shadowOpacity:.06,shadowRadius:15,shadowOffset:{width:0,height:8}},
+  insightMint:{borderTopWidth:3,borderTopColor:P.mint},insightCoral:{borderTopWidth:3,borderTopColor:P.coral},insightViolet:{borderTopWidth:3,borderTopColor:P.lilac},insightBlue:{borderTopWidth:3,borderTopColor:'#3B82F6'},
+  insightIcon:{width:34,height:34,borderRadius:11,backgroundColor:P.mintSoft,alignItems:'center',justifyContent:'center'},
+  insightValue:{color:P.text,fontSize:22,fontWeight:'900',marginTop:14},insightTitle:{color:P.text,fontSize:10,fontWeight:'900',marginTop:3},insightText:{color:P.muted,fontSize:8.2,lineHeight:13,marginTop:7},
+  commandShelf:{gap:18,alignItems:'center',borderWidth:1,borderColor:'#C8D4E3',backgroundColor:'rgba(255,255,255,.93)',borderRadius:22,padding:18,marginBottom:24,shadowColor:'#66758C',shadowOpacity:.06,shadowRadius:18,shadowOffset:{width:0,height:8}},
+  commandShelfCopy:{flex:1,minWidth:240},commandShelfTitle:{color:P.text,fontSize:18,fontWeight:'900',marginTop:5},commandShelfText:{color:P.muted,fontSize:9,lineHeight:14,marginTop:6,maxWidth:420},
+  commandShelfActions:{flex:1.5,flexDirection:'row',flexWrap:'wrap',gap:9,justifyContent:'flex-end'},commandAction:{minWidth:190,flexGrow:1,flexDirection:'row',alignItems:'center',gap:10,borderWidth:1,borderColor:'#D7E0EB',backgroundColor:'#F9FBFE',borderRadius:14,padding:11},
+  commandActionIcon:{width:34,height:34,borderRadius:11,alignItems:'center',justifyContent:'center'},commandActionTitle:{color:P.text,fontSize:9.3,fontWeight:'900'},commandActionSub:{color:P.muted,fontSize:7.7,marginTop:3},
   dashboardLower:{gap:14},dashboardMain:{flex:1.65,minWidth:0},dashboardSide:{flex:1,minWidth:290,gap:14},textButton:{flexDirection:'row',alignItems:'center',gap:7},textButtonText:{color:P.mint,fontSize:8,fontWeight:'900',letterSpacing:.8},
   queueCard:{borderWidth:1,borderColor:P.border,backgroundColor:P.panel,borderRadius:20,padding:10},queueItem:{flexDirection:'row',alignItems:'center',gap:10,padding:10,borderBottomWidth:1,borderBottomColor:'#E8EDF4'},queueIcon:{width:34,height:34,borderRadius:10,alignItems:'center',justifyContent:'center'},queueTitle:{color:P.text,fontSize:9.5,fontWeight:'900'},queueText:{color:P.muted,fontSize:8,lineHeight:12,marginTop:3},clearState:{alignItems:'center',padding:26},clearTitle:{color:P.text,fontSize:11,fontWeight:'900',marginTop:9},clearText:{color:P.muted,fontSize:8.5,lineHeight:14,marginTop:4,textAlign:'center'},
   aiLaunchCard:{borderWidth:1,borderColor:'#D8D0EF',backgroundColor:'#F4F0FF',borderRadius:20,padding:17},aiLaunchOverline:{color:P.lilac,fontSize:8,fontWeight:'900',letterSpacing:1.5},aiLaunchTitle:{color:P.text,fontSize:17,fontWeight:'900',marginTop:7},aiLaunchText:{color:'#6E6480',fontSize:9,lineHeight:14,marginTop:7},aiLaunchButton:{marginTop:14,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:'#CDC1EA',borderRadius:11,padding:10},aiLaunchButtonText:{color:P.lilac,fontSize:8,fontWeight:'900',letterSpacing:.7},
-  pageActions:{flexDirection:'row',alignItems:'center',gap:9,flexWrap:'wrap',justifyContent:'flex-end'},incidentButton:{flexDirection:'row',alignItems:'center',gap:7,borderWidth:1,borderColor:P.borderStrong,backgroundColor:P.panel,borderRadius:12,paddingHorizontal:12,paddingVertical:9},incidentButtonActive:{borderColor:'#6E3144',backgroundColor:'#25131A'},incidentButtonText:{color:P.text,fontSize:8.5,fontWeight:'900',letterSpacing:.7},
+  pageActions:{flexDirection:'row',alignItems:'center',gap:9,flexWrap:'wrap',justifyContent:'flex-end'},incidentButton:{flexDirection:'row',alignItems:'center',gap:7,borderWidth:1,borderColor:P.borderStrong,backgroundColor:P.panel,borderRadius:12,paddingHorizontal:12,paddingVertical:9},incidentButtonActive:{borderColor:'#F0AFC0',backgroundColor:'#FFF0F4'},incidentButtonText:{color:P.text,fontSize:8.5,fontWeight:'900',letterSpacing:.7},
   relationshipPanel:{marginTop:14,borderWidth:1,borderColor:P.border,backgroundColor:P.panel,borderRadius:20,padding:15},relationshipHead:{flexDirection:'row',justifyContent:'space-between',alignItems:'center'},relationshipTitle:{color:P.text,fontSize:11,fontWeight:'900'},relationshipCount:{color:P.muted,fontSize:8},relationshipGrid:{flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:12},relationshipChip:{flexDirection:'row',alignItems:'center',gap:7,borderWidth:1,borderColor:'#DDE5EF',backgroundColor:'#F8FAFD',borderRadius:10,paddingHorizontal:10,paddingVertical:8},relationshipDot:{width:6,height:6,borderRadius:6,backgroundColor:P.mint},relationshipText:{color:P.text2,fontSize:8.5},relationshipSource:{color:P.muted2,fontSize:7,textTransform:'uppercase'},
   securityGrid:{gap:14},securityMain:{flex:1.5,minWidth:0,gap:14},securitySide:{flex:1,minWidth:300,gap:12},panel:{borderWidth:1,borderColor:P.border,backgroundColor:'rgba(255,255,255,.90)',borderRadius:22,padding:16,shadowColor:'#65748A',shadowOpacity:.07,shadowRadius:16,shadowOffset:{width:0,height:8}},panelHead:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',gap:10,marginBottom:10},panelOverline:{color:P.mint,fontSize:7.5,fontWeight:'900',letterSpacing:1.4},panelTitle:{color:P.text,fontSize:14,fontWeight:'900',marginTop:5},panelMeta:{color:P.muted,fontSize:8},
-  alertRow:{flexDirection:'row',alignItems:'center',gap:11,borderWidth:1,borderColor:'#ECD8B6',backgroundColor:'#FFF8EC',borderRadius:14,padding:12,marginTop:8},alertRowCritical:{borderColor:'#F0BAC6',backgroundColor:'#FFF2F5'},alertScan:{width:34,alignItems:'center'},alertHead:{flexDirection:'row',justifyContent:'space-between',gap:10,alignItems:'center'},alertTitle:{color:P.text,fontSize:9.5,fontWeight:'900',flex:1},alertSeverity:{fontSize:7.2,fontWeight:'900',letterSpacing:.7},alertDetail:{color:P.muted,fontSize:8.4,lineHeight:13,marginTop:4},traceButton:{borderWidth:1,borderColor:'#39443F',backgroundColor:'#121714',borderRadius:9,paddingHorizontal:8,paddingVertical:7,flexDirection:'row',alignItems:'center',gap:5},traceText:{color:P.mint,fontSize:7,fontWeight:'900'},
+  alertRow:{flexDirection:'row',alignItems:'center',gap:11,borderWidth:1,borderColor:'#ECD8B6',backgroundColor:'#FFF8EC',borderRadius:14,padding:12,marginTop:8},alertRowCritical:{borderColor:'#F0BAC6',backgroundColor:'#FFF2F5'},alertScan:{width:34,alignItems:'center'},alertHead:{flexDirection:'row',justifyContent:'space-between',gap:10,alignItems:'center'},alertTitle:{color:P.text,fontSize:9.5,fontWeight:'900',flex:1},alertSeverity:{fontSize:7.2,fontWeight:'900',letterSpacing:.7},alertDetail:{color:P.muted,fontSize:8.4,lineHeight:13,marginTop:4},traceButton:{borderWidth:1,borderColor:'#BFE4D9',backgroundColor:'#EFFAF6',borderRadius:9,paddingHorizontal:8,paddingVertical:7,flexDirection:'row',alignItems:'center',gap:5},traceText:{color:P.mint,fontSize:7,fontWeight:'900'},
   timelineItem:{flexDirection:'row',gap:11,minHeight:46},timelineTrack:{width:17,alignItems:'center'},timelineDot:{width:7,height:7,borderRadius:7,backgroundColor:P.mint,marginTop:5},timelineStem:{width:1,flex:1,backgroundColor:'#DDE5EF',marginTop:4},timelineRow:{flexDirection:'row',justifyContent:'space-between',alignItems:'center'},timelineTime:{color:P.text2,fontSize:8.8,fontWeight:'800'},timelinePosture:{fontSize:7,fontWeight:'900',letterSpacing:.7},timelineText:{color:P.muted,fontSize:8,marginTop:3},
-  playbook:{borderWidth:1,borderColor:'#44354F',borderRadius:20,padding:16},playbookTitle:{color:P.text,fontSize:17,fontWeight:'900',marginTop:6},playbookText:{color:'#6F7D91',fontSize:8.8,lineHeight:14,marginTop:7,marginBottom:10},playbookAction:{flexDirection:'row',alignItems:'center',gap:9,borderWidth:1,borderColor:'#312A39',backgroundColor:'#F8FAFD',borderRadius:12,padding:10,marginTop:7},playbookIcon:{width:30,height:30,borderRadius:9,backgroundColor:'#E3F8F1',alignItems:'center',justifyContent:'center'},playbookActionText:{flex:1,color:P.text2,fontSize:8.8,fontWeight:'800'},
-  plan:{borderWidth:1,borderColor:'#E8D3A9',backgroundColor:'#FFF9EE',borderRadius:18,padding:14},planHead:{flexDirection:'row',justifyContent:'space-between',alignItems:'flex-start',gap:10},planRisk:{color:P.amber,fontSize:7,fontWeight:'900',letterSpacing:.7},planTitle:{color:P.text,fontSize:10.5,fontWeight:'900',marginTop:4,maxWidth:210},planSummary:{color:P.muted,fontSize:8.2,lineHeight:13,marginTop:8},codeBox:{backgroundColor:'#0D0D11',borderWidth:1,borderColor:'#DDE5EF',borderRadius:10,padding:9,marginTop:9},codeLine:{color:P.mintSoft,fontSize:7.8,lineHeight:13,fontFamily:'monospace'},planButtons:{flexDirection:'row',gap:8,marginTop:9},reject:{flex:1,borderWidth:1,borderColor:'#E9BBC5',borderRadius:9,padding:9,alignItems:'center'},rejectText:{color:'#FFA0B3',fontSize:7.5,fontWeight:'900'},approve:{flex:1,backgroundColor:P.mint,borderRadius:9,padding:9,alignItems:'center'},approveText:{color:'#172033',fontSize:7.5,fontWeight:'900'},planNote:{color:P.muted2,fontSize:7.2,lineHeight:11,marginTop:8},
+  playbook:{borderWidth:1,borderColor:'#D7CEF2',borderRadius:20,padding:16},playbookTitle:{color:P.text,fontSize:17,fontWeight:'900',marginTop:6},playbookText:{color:'#6F7D91',fontSize:8.8,lineHeight:14,marginTop:7,marginBottom:10},playbookAction:{flexDirection:'row',alignItems:'center',gap:9,borderWidth:1,borderColor:'#DCE4EE',backgroundColor:'#F8FAFD',borderRadius:12,padding:10,marginTop:7},playbookIcon:{width:30,height:30,borderRadius:9,backgroundColor:'#E3F8F1',alignItems:'center',justifyContent:'center'},playbookActionText:{flex:1,color:P.text2,fontSize:8.8,fontWeight:'800'},
+  plan:{borderWidth:1,borderColor:'#E8D3A9',backgroundColor:'#FFF9EE',borderRadius:18,padding:14},planHead:{flexDirection:'row',justifyContent:'space-between',alignItems:'flex-start',gap:10},planRisk:{color:P.amber,fontSize:7,fontWeight:'900',letterSpacing:.7},planTitle:{color:P.text,fontSize:10.5,fontWeight:'900',marginTop:4,maxWidth:210},planSummary:{color:P.muted,fontSize:8.2,lineHeight:13,marginTop:8},codeBox:{backgroundColor:'#10213B',borderWidth:1,borderColor:'#1D3558',borderRadius:10,padding:9,marginTop:9},codeLine:{color:'#C7F5E8',fontSize:7.8,lineHeight:13,fontFamily:'monospace'},planButtons:{flexDirection:'row',gap:8,marginTop:9},reject:{flex:1,borderWidth:1,borderColor:'#E9BBC5',borderRadius:9,padding:9,alignItems:'center'},rejectText:{color:'#C84560',fontSize:7.5,fontWeight:'900'},approve:{flex:1,backgroundColor:P.mint,borderRadius:9,padding:9,alignItems:'center'},approveText:{color:'#172033',fontSize:7.5,fontWeight:'900'},planNote:{color:P.muted2,fontSize:7.2,lineHeight:11,marginTop:8},
   agentGrid:{gap:14},agentMain:{flex:1.65,minWidth:0},agentSide:{flex:1,minWidth:290,gap:12},agentComposer:{borderWidth:1,borderColor:P.borderStrong,borderRadius:24,padding:18},agentComposerTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:12},agentComposerTitle:{color:P.text,fontSize:20,fontWeight:'900',marginTop:5},miniOrb:{width:90,alignItems:'center'},promptBox:{marginTop:14,borderWidth:1,borderColor:'#CCD6E5',backgroundColor:'#FAFBFD',borderRadius:16,padding:10,flexDirection:'row',alignItems:'center',gap:10},promptInput:{flex:1,minHeight:60,maxHeight:130,color:P.text,fontSize:10.5,lineHeight:17,paddingHorizontal:4},execute:{minWidth:95,height:40,borderRadius:11,backgroundColor:P.mint,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:7,paddingHorizontal:12},executeText:{color:'#172033',fontSize:8,fontWeight:'900',letterSpacing:.7},quickGrid:{flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:10},quickCard:{flexGrow:1,flexBasis:250,minWidth:230,flexDirection:'row',alignItems:'center',gap:9,borderWidth:1,borderColor:'#DDE5EF',backgroundColor:'#F8FAFD',borderRadius:12,padding:10},quickIcon:{width:30,height:30,borderRadius:9,backgroundColor:'#EFEDFF',alignItems:'center',justifyContent:'center'},quickTitle:{color:P.text2,fontSize:8.8,fontWeight:'900'},quickText:{color:P.muted,fontSize:7.6,lineHeight:11,marginTop:2},
-  runPanel:{marginTop:12,borderWidth:1,borderColor:P.border,backgroundColor:P.panel,borderRadius:20,padding:16},runHead:{flexDirection:'row',justifyContent:'space-between',alignItems:'flex-start',gap:12},runPrompt:{color:P.text,fontSize:12.5,fontWeight:'900',marginTop:5,maxWidth:760},traceList:{marginTop:14},traceItem:{flexDirection:'row',gap:10,minHeight:48},traceRail:{width:18,alignItems:'center'},traceDot:{width:7,height:7,borderRadius:7,marginTop:5},traceStem:{width:1,flex:1,backgroundColor:'#DCE4EE',marginTop:4},traceHead:{flexDirection:'row',justifyContent:'space-between',gap:10},traceTitle:{color:P.text2,fontSize:9,fontWeight:'900'},traceIndex:{color:P.muted2,fontSize:7.5,fontWeight:'900'},traceDetail:{color:P.muted,fontSize:8,lineHeight:12.5,marginTop:4},reasoning:{flexDirection:'row',alignItems:'center',gap:9,borderWidth:1,borderColor:'#CFE5DD',backgroundColor:'#F1FBF8',borderRadius:11,padding:10,marginTop:8},reasoningText:{color:'#8EB7A9',fontSize:8.5},
-  answer:{marginTop:12,borderWidth:1,borderColor:'#D8CEEA',backgroundColor:'#F7F3FF',borderRadius:15,padding:13},answerBody:{color:P.text2,fontSize:9.5,lineHeight:16,marginTop:8},responseGrid:{gap:8,marginTop:9},responseCard:{borderWidth:1,borderColor:'#302B38',backgroundColor:'#F8FAFD',borderRadius:11,padding:10},responseRisk:{borderColor:'#5B3B31',backgroundColor:'#1B1512'},responseHead:{flexDirection:'row',alignItems:'center',gap:7,marginBottom:6},responseIcon:{width:24,height:24,borderRadius:8,backgroundColor:'#1C1B22',alignItems:'center',justifyContent:'center'},responseLabel:{color:P.mintSoft,fontSize:7.5,fontWeight:'900',letterSpacing:1},responseText:{color:P.text2,fontSize:8.7,lineHeight:14},
-  errorBox:{marginTop:10,flexDirection:'row',gap:9,borderWidth:1,borderColor:'#5A2E3D',backgroundColor:'#FFF0F3',borderRadius:12,padding:11},errorTitle:{color:'#B93853',fontSize:9,fontWeight:'900'},errorText:{color:'#9B5D6C',fontSize:8,lineHeight:12,marginTop:3},
-  contextCard:{borderWidth:1,borderColor:P.border,backgroundColor:P.panel,borderRadius:18,padding:15},contextTitle:{color:P.text,fontSize:14,fontWeight:'900',marginTop:6},contextText:{color:P.muted,fontSize:8.5,lineHeight:13.5,marginTop:6},contextRow:{flexDirection:'row',alignItems:'center',gap:9,paddingVertical:9,borderBottomWidth:1,borderBottomColor:'#E6EBF2'},contextIcon:{width:28,height:28,borderRadius:9,backgroundColor:'#1B1A20',alignItems:'center',justifyContent:'center'},contextLabel:{flex:1,color:P.text2,fontSize:8.8},contextValue:{fontSize:8.2,fontWeight:'900'},modelBadge:{marginTop:12,flexDirection:'row',alignItems:'center',gap:8},modelBadgeText:{color:'#279D7F',fontSize:7.5,fontWeight:'900',letterSpacing:.7},
+  runPanel:{marginTop:12,borderWidth:1,borderColor:P.border,backgroundColor:P.panel,borderRadius:20,padding:16},runHead:{flexDirection:'row',justifyContent:'space-between',alignItems:'flex-start',gap:12},runPrompt:{color:P.text,fontSize:12.5,fontWeight:'900',marginTop:5,maxWidth:760},traceList:{marginTop:14},traceItem:{flexDirection:'row',gap:10,minHeight:48},traceRail:{width:18,alignItems:'center'},traceDot:{width:7,height:7,borderRadius:7,marginTop:5},traceStem:{width:1,flex:1,backgroundColor:'#DCE4EE',marginTop:4},traceHead:{flexDirection:'row',justifyContent:'space-between',gap:10},traceTitle:{color:P.text2,fontSize:9,fontWeight:'900'},traceIndex:{color:P.muted2,fontSize:7.5,fontWeight:'900'},traceDetail:{color:P.muted,fontSize:8,lineHeight:12.5,marginTop:4},reasoning:{flexDirection:'row',alignItems:'center',gap:9,borderWidth:1,borderColor:'#CFE5DD',backgroundColor:'#F1FBF8',borderRadius:11,padding:10,marginTop:8},reasoningText:{color:'#397D69',fontSize:8.5},
+  answer:{marginTop:12,borderWidth:1,borderColor:'#D8CEEA',backgroundColor:'#F7F3FF',borderRadius:15,padding:13},answerBody:{color:P.text2,fontSize:9.5,lineHeight:16,marginTop:8},responseGrid:{gap:8,marginTop:9},responseCard:{borderWidth:1,borderColor:'#D8E0EB',backgroundColor:'#F8FAFD',borderRadius:11,padding:10},responseRisk:{borderColor:'#F0C0CA',backgroundColor:'#FFF3F5'},responseHead:{flexDirection:'row',alignItems:'center',gap:7,marginBottom:6},responseIcon:{width:24,height:24,borderRadius:8,backgroundColor:'#EEF3F8',alignItems:'center',justifyContent:'center'},responseLabel:{color:'#15866A',fontSize:7.5,fontWeight:'900',letterSpacing:1},responseText:{color:P.text2,fontSize:8.7,lineHeight:14},
+  errorBox:{marginTop:10,flexDirection:'row',gap:9,borderWidth:1,borderColor:'#EFB8C5',backgroundColor:'#FFF0F3',borderRadius:12,padding:11},errorTitle:{color:'#B93853',fontSize:9,fontWeight:'900'},errorText:{color:'#9B5D6C',fontSize:8,lineHeight:12,marginTop:3},
+  contextCard:{borderWidth:1,borderColor:P.border,backgroundColor:P.panel,borderRadius:18,padding:15},contextTitle:{color:P.text,fontSize:14,fontWeight:'900',marginTop:6},contextText:{color:P.muted,fontSize:8.5,lineHeight:13.5,marginTop:6},contextRow:{flexDirection:'row',alignItems:'center',gap:9,paddingVertical:9,borderBottomWidth:1,borderBottomColor:'#E6EBF2'},contextIcon:{width:28,height:28,borderRadius:9,backgroundColor:'#EEF3F8',alignItems:'center',justifyContent:'center'},contextLabel:{flex:1,color:P.text2,fontSize:8.8},contextValue:{fontSize:8.2,fontWeight:'900'},modelBadge:{marginTop:12,flexDirection:'row',alignItems:'center',gap:8},modelBadgeText:{color:'#279D7F',fontSize:7.5,fontWeight:'900',letterSpacing:.7},
   settingsGrid:{gap:14},settingsMain:{flex:1.3},settingsSide:{flex:1,gap:12},fieldLabel:{color:P.text2,fontSize:9,fontWeight:'800',marginTop:9},field:{borderWidth:1,borderColor:'#D7E0EB',backgroundColor:'#FAFBFD',borderRadius:11,padding:12,color:P.text,marginTop:7},connectButton:{marginTop:16,backgroundColor:P.mint,borderRadius:11,padding:12,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8},connectText:{color:'#172033',fontSize:9,fontWeight:'900',letterSpacing:.6},connectionCard:{borderWidth:1,borderColor:P.border,backgroundColor:P.panel,borderRadius:18,padding:16},connectionIcon:{width:38,height:38,borderRadius:12,backgroundColor:'#F1F4F8',alignItems:'center',justifyContent:'center'},connectionTitle:{color:P.text,fontSize:12,fontWeight:'900',marginTop:12},connectionText:{color:P.muted,fontSize:8.5,lineHeight:13.5,marginTop:6,marginBottom:12},
   mobileNav:{height:66,borderTopWidth:1,borderTopColor:P.border,backgroundColor:'#FFFFFF',flexDirection:'row',alignItems:'center',justifyContent:'space-around',paddingHorizontal:4},mobileNavItem:{flex:1,alignItems:'center',gap:4},mobileNavText:{color:P.muted,fontSize:7.5,fontWeight:'800'},
 });
