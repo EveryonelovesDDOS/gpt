@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createAgent } from './agent.mjs';
 import { createPacketTracerClient } from './packetTracer.mjs';
+import { createIncidentManager } from './incidents.mjs';
 import { listFiles, readDocument } from './tools.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -38,6 +39,7 @@ export function createServer({
   const dist = path.join(projectRoot, 'dist');
   const networkClient = createPacketTracerClient({ fetcher });
   const agent = createAgent({ root: workspace, model, ollama, fetcher, networkClient });
+  const incidents = createIncidentManager({ networkClient });
   const server = http.createServer(async (req, res) => {
     const origin = req.headers.origin;
     if (origin && !localOrigin(origin)) return json(res, 403, { error: '此来源不允许访问本地服务' });
@@ -77,6 +79,11 @@ export function createServer({
       if (url.pathname === '/api/network/hosts' && req.method === 'GET') return json(res, 200, { hosts: await networkClient.getHosts() }, origin);
       if (url.pathname === '/api/network/topology' && req.method === 'GET') return json(res, 200, await networkClient.getTopology(), origin);
       if (url.pathname === '/api/network/security' && req.method === 'GET') return json(res, 200, await networkClient.getSecurityAnalysis(), origin);
+      if (url.pathname === '/api/incidents' && req.method === 'GET') return json(res, 200, await incidents.getTimeline(), origin);
+      if (url.pathname === '/api/actions' && req.method === 'GET') return json(res, 200, { proposals: incidents.listProposals() }, origin);
+      if (url.pathname === '/api/actions/propose' && req.method === 'POST') { const { kind } = await body(req); return json(res, 201, await incidents.propose(kind), origin); }
+      const actionMatch = url.pathname.match(/^\/api\/actions\/([\da-f-]+)\/decision$/);
+      if (actionMatch && req.method === 'POST') { const { approved } = await body(req); if (typeof approved !== 'boolean') throw new Error('Approval must be boolean'); return json(res, 200, incidents.decide(actionMatch[1], approved), origin); }
       if (url.pathname === '/api/files' && req.method === 'GET') {
         const files = await listFiles(workspace); return json(res, 200, { files }, origin);
       }
