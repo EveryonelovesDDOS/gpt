@@ -7,19 +7,42 @@ const note = (run, kind, title, detail = '') => run.events.push({ id: randomUUID
 
 export function createAgent({ root, model, ollama = 'http://127.0.0.1:11434', fetcher = fetch, networkClient = null }) {
   const runs = new Map();
+  let activeModel = model;
+  async function availableModels(signal) {
+    try {
+      const response = await fetcher(`${ollama}/api/tags`, { signal: AbortSignal.any([signal, AbortSignal.timeout(3500)]) });
+      if (!response.ok) return [];
+      const payload = await response.json();
+      return Array.isArray(payload?.models) ? payload.models.map(x => x.name || x.model).filter(Boolean) : [];
+    } catch { return []; }
+  }
+  async function requestChat(messages, signal, selectedModel) {
+    return fetcher(`${ollama}/api/chat`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.any([signal, AbortSignal.timeout(90_000)]),
+      body: JSON.stringify({ model: selectedModel, messages, tools: definitions, stream: false, options: { num_predict: 1200 } }),
+    });
+  }
   async function chat(messages, signal) {
     let response;
     try {
-      response = await fetcher(`${ollama}/api/chat`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        signal: AbortSignal.any([signal, AbortSignal.timeout(90_000)]),
-        body: JSON.stringify({ model, messages, tools: definitions, stream: false, options: { num_predict: 1200 } }),
-      });
+      response = await requestChat(messages, signal, activeModel);
+      if (response.status === 404) {
+        const installed = await availableModels(signal);
+        const fallback = installed.find(x => x !== activeModel) || installed[0];
+        if (!fallback) throw new Error('Ollama 已启动，但没有安装任何模型。请先运行 ollama pull qwen3:4b，或在 Settings 选择已安装模型。');
+        activeModel = fallback;
+        response = await requestChat(messages, signal, activeModel);
+      }
     } catch (e) {
       if (signal.aborted) throw e;
+      if (e instanceof Error && e.message.startsWith('Ollama 已启动')) throw e;
       throw new Error(e.name === 'TimeoutError' ? '本地模型响应超时' : '无法连接 Ollama，请检查它是否已启动');
     }
-    if (!response.ok) throw new Error(`Ollama 返回 ${response.status}。请确认模型 ${model} 已下载。`);
+    if (!response.ok) {
+      const installed = await availableModels(signal);
+      throw new Error(`Ollama 返回 ${response.status}。当前模型：${activeModel}。已安装模型：${installed.join(', ') || 'none'}`);
+    }
     const payload = await response.json();
     if (!payload?.message || payload.message.role !== 'assistant') throw new Error('模型响应无效');
     return payload.message;
@@ -97,7 +120,7 @@ export function createAgent({ root, model, ollama = 'http://127.0.0.1:11434', fe
     return { id: run.id, prompt: run.prompt, status: run.status, events: run.events, answer: run.answer, error: run.error, pending: run.pending ? { name: run.pending.name, path: run.pending.args.path, preview: run.pending.preview } : null };
   }
   return {
-    start, get: id => publicRun(runs.get(id)),
+    start, get: id => publicRun(runs.get(id)), getActiveModel: () => activeModel,
     decide(id, approved) {
       const run = runs.get(id);
       if (!run || run.status !== 'approval' || !run.resume) throw new Error('没有待审批操作');
