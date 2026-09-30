@@ -1,161 +1,268 @@
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StatusBar, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StatusBar, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Orb } from './src/Orb';
-import { AgentEvent, AgentRun, Health } from './src/types';
-import { cancelRun, checkHealth, decideRun, defaultEndpoint, getFile, getFiles, getRun, startRun } from './src/api';
-import { demoAdvance, demoDecide, demoStart } from './src/demo';
-import { C, s } from './src/theme';
+import { AgentRun, Health, NetworkHealth } from './src/types';
+import { checkHealth, defaultEndpoint, getNetworkHealth, getRun, startRun } from './src/api';
 
-type Page = 'home' | 'agent' | 'workspace' | 'settings';
+type Page = 'dashboard' | 'agent' | 'settings';
 type IconName = keyof typeof Feather.glyphMap;
-const nav: { id: Page; title: string; icon: IconName }[] = [
-  { id: 'home', title: '总览', icon: 'grid' }, { id: 'agent', title: 'Agent', icon: 'command' },
-  { id: 'workspace', title: '工作区', icon: 'folder' }, { id: 'settings', title: '设置', icon: 'sliders' },
-];
-const prompts = [
-  { icon: 'file-text' as IconName, title: '制作简报', text: '读取工作区资料，提炼要点，生成一份简洁的中文简报。', hue: '#78BAFF' },
-  { icon: 'compass' as IconName, title: '规划项目', text: '分析工作区内容，制定清晰的项目执行计划并保存。', hue: '#B79CFF' },
-  { icon: 'search' as IconName, title: '定位信息', text: '在工作区文件里找到关键问题、相关事实和下一步建议。', hue: '#64DAC5' },
-];
-const eventIcon: Record<AgentEvent['kind'], IconName> = {
-  thinking: 'loader', tool: 'terminal', success: 'check', approval: 'shield',
-  denied: 'x', final: 'star', error: 'alert-triangle',
+
+const previewNetwork: NetworkHealth = {
+  controllerOnline: true,
+  deviceCount: 2,
+  reachableCount: 2,
+  unreachableCount: 0,
+  allReachable: true,
+  checkedAt: new Date().toISOString(),
+  devices: [
+    { id: 'preview-core', name: 'CORE-SW', role: 'core-switch', managementIp: '10.0.0.2', ipAddresses: ['10.0.0.2'], macAddress: '0001.4388.3D5C', interfaces: 33, status: 'online', reachabilityStatus: 'Reachable', collectionStatus: 'Unsupported', lastUpdated: 'preview' },
+    { id: 'preview-edge', name: 'EDGE-RTR', role: 'edge-router', managementIp: '10.0.0.1', ipAddresses: ['10.0.0.1', '203.0.113.1'], macAddress: '0030.F219.26E7', interfaces: 4, status: 'online', reachabilityStatus: 'Reachable', collectionStatus: 'Unsupported', lastUpdated: 'preview' },
+  ],
 };
-const eventColor: Record<AgentEvent['kind'], string> = {
-  thinking: '#8ABEFF', tool: '#AF9CFF', success: '#62DABC', approval: '#FFCC83',
-  denied: '#FF8A91', final: '#7BB6FF', error: '#FF8A91',
-};
-function I({ name, size = 18, color = C.text }: { name: IconName; size?: number; color?: string }) {
+
+function Icon({ name, size = 18, color = '#CFE2FF' }: { name: IconName; size?: number; color?: string }) {
   return <Feather name={name} size={size} color={color} />;
 }
-function Badge({ label, color = C.blue }: { label: string; color?: string }) {
-  return <View style={[s.badge, { borderColor: color + '55' }]}><View style={[s.badgeDot, { backgroundColor: color }]} /><Text style={[s.badgeText, { color }]}>{label}</Text></View>;
-}
-function EventRow({ event, last }: { event: AgentEvent; last: boolean }) {
-  const color = eventColor[event.kind];
-  return <View style={s.eventRow}><View style={s.timeline}><View style={[s.eventIcon, { borderColor: color + '66', backgroundColor: color + '1E' }]}><I name={eventIcon[event.kind]} size={14} color={color} /></View>{!last && <View style={s.timelineLine} />}</View>
-    <View style={s.eventBody}><View style={s.eventHeading}><Text style={s.eventTitle}>{event.title}</Text><Text style={s.eventTime}>{new Date(event.at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</Text></View>{!!event.detail && <Text style={s.eventDetail}>{event.detail}</Text>}</View>
+
+function Pill({ text, good = true }: { text: string; good?: boolean }) {
+  return <View style={[st.pill, { borderColor: good ? '#2E806E' : '#735A33' }]}>
+    <View style={[st.dot, { backgroundColor: good ? '#68E1C4' : '#FFC96D' }]} />
+    <Text style={[st.pillText, { color: good ? '#8EF0D7' : '#FFD58A' }]}>{text}</Text>
   </View>;
 }
+
+function Metric({ label, value, icon }: { label: string; value: string | number; icon: IconName }) {
+  return <View style={st.metric}>
+    <View style={st.metricIcon}><Icon name={icon} size={17} color="#76BBFF" /></View>
+    <Text style={st.metricValue}>{value}</Text>
+    <Text style={st.metricLabel}>{label}</Text>
+  </View>;
+}
+
 function AppContent() {
   const { width } = useWindowDimensions();
   const desktop = width >= 900;
-  const [page, setPage] = useState<Page>('home');
-  const [mode, setMode] = useState<'preview' | 'local'>('preview');
-  const [endpoint, setEndpoint] = useState(defaultEndpoint);
-  const [editedEndpoint, setEditedEndpoint] = useState(defaultEndpoint);
+  const [page, setPage] = useState<Page>('dashboard');
+  const [endpoint, setEndpoint] = useState(defaultEndpoint());
   const [pair, setPair] = useState('');
-  const [editedPair, setEditedPair] = useState('');
-  const [health, setHealth] = useState<Health | null>(null);
-  const [run, setRun] = useState<AgentRun | null>(null);
-  const [prompt, setPrompt] = useState('');
-  const [files, setFiles] = useState<string[]>([]);
-  const [openFile, setOpenFile] = useState<{ name: string; content: string } | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [editEndpoint, setEditEndpoint] = useState(defaultEndpoint());
+  const [editPair, setEditPair] = useState('');
+  const [serverHealth, setServerHealth] = useState<Health | null>(null);
+  const [network, setNetwork] = useState<NetworkHealth | null>(null);
+  const [connected, setConnected] = useState(false);
   const [notice, setNotice] = useState('');
-  useEffect(() => { AsyncStorage.getItem('@nova/endpoint').then(x => { if (x) { setEndpoint(x); setEditedEndpoint(x); } }).catch(() => {}); }, []);
+  const [busy, setBusy] = useState(false);
+  const [prompt, setPrompt] = useState('');
+  const [run, setRun] = useState<AgentRun | null>(null);
+
   useEffect(() => {
-    if (!run?.id || mode !== 'local' || !['thinking', 'approval', 'resuming'].includes(run.status)) return;
-    const timer = setInterval(() => getRun(endpoint, pair, run.id).then(setRun).catch(e => setNotice(e.message)), 850);
+    Promise.all([AsyncStorage.getItem('@nexus/endpoint'), AsyncStorage.getItem('@nexus/pair')]).then(([e, p]) => {
+      if (e) { setEndpoint(e); setEditEndpoint(e); }
+      if (p) { setPair(p); setEditPair(p); }
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!connected) return;
+    const timer = setInterval(() => {
+      getNetworkHealth(endpoint, pair).then(setNetwork).catch(() => {});
+    }, 4000);
     return () => clearInterval(timer);
-  }, [run?.id, run?.status, mode, endpoint, pair]);
+  }, [connected, endpoint, pair]);
+
   useEffect(() => {
-    if (mode !== 'preview' || !run || run.status !== 'thinking') return;
-    const a = setTimeout(() => setRun(prev => prev?.status === 'thinking' ? demoAdvance(prev, 1) : prev), 850);
-    const b = setTimeout(() => setRun(prev => prev?.status === 'thinking' ? demoAdvance(prev, 2) : prev), 1750);
-    const c = setTimeout(() => setRun(prev => prev?.status === 'thinking' ? demoAdvance(prev, 3) : prev), 2800);
-    return () => { clearTimeout(a); clearTimeout(b); clearTimeout(c); };
-  }, [run?.id, mode]);
-  const active = run && ['thinking', 'approval', 'resuming'].includes(run.status);
-  const modelLabel = mode === 'preview' ? 'INTERACTIVE PREVIEW' : health?.modelReady ? 'LOCAL MODEL ONLINE' : health?.online ? 'MODEL NOT READY' : 'LOCAL OFFLINE';
-  const modelColor = mode === 'preview' ? '#C8A6FF' : health?.modelReady ? C.green : C.amber;
-  const jump = (text: string) => { setPrompt(text); setPage('agent'); };
+    if (!run?.id || !['thinking', 'approval', 'resuming'].includes(run.status)) return;
+    const timer = setInterval(() => getRun(endpoint, pair, run.id).then(setRun).catch(e => setNotice(e.message)), 900);
+    return () => clearInterval(timer);
+  }, [run?.id, run?.status, endpoint, pair]);
+
+  const shown = network || previewNetwork;
+  const live = connected && !!network;
+  const statusText = shown.allReachable ? 'OPERATIONAL' : 'ATTENTION REQUIRED';
+  const statusGood = shown.allReachable;
+
   async function connect() {
     setBusy(true); setNotice('');
     try {
-      const url = editedEndpoint.trim().replace(/\/$/, '');
-      if (!/^https?:\/\//.test(url)) throw new Error('请输入完整地址，例如 http://192.168.1.10:8787');
-      const status = await checkHealth(url);
-      const result = await getFiles(url, editedPair.trim());
-      setEndpoint(url); setPair(editedPair.trim()); setHealth(status); setFiles(result.files);
-      setMode('local'); await AsyncStorage.setItem('@nova/endpoint', url);
-      setNotice(status.modelReady ? '已连接到本地模型和工作区' : '已连接服务端，但尚未找到指定的 Ollama 模型');
-    } catch (e) { setNotice(e instanceof Error ? e.message : '连接失败'); }
-    finally { setBusy(false); }
+      const url = editEndpoint.trim().replace(/\/$/, '');
+      const token = editPair.trim();
+      const h = await checkHealth(url);
+      const n = await getNetworkHealth(url, token);
+      setEndpoint(url); setPair(token); setServerHealth(h); setNetwork(n); setConnected(true);
+      await AsyncStorage.multiSet([['@nexus/endpoint', url], ['@nexus/pair', token]]);
+      setNotice('Connected to NEXUS and Packet Tracer Controller.');
+      setPage('dashboard');
+    } catch (e) {
+      setConnected(false);
+      setNotice(e instanceof Error ? e.message : 'Connection failed');
+    } finally { setBusy(false); }
   }
-  async function refreshFiles() {
-    if (mode === 'preview') return;
-    try { setFiles((await getFiles(endpoint, pair)).files); } catch (e) { setNotice(e instanceof Error ? e.message : '读取失败'); }
-  }
-  async function viewFile(name: string) {
-    if (mode === 'preview') { setOpenFile({ name, content: '这是交互预览中的示例文档。连接你电脑上的本地服务后，这里会显示真实文件内容。' }); return; }
-    try { setOpenFile(await getFile(endpoint, pair, name)); } catch (e) { setNotice(e instanceof Error ? e.message : '读取失败'); }
-  }
-  async function submit() {
-    if (prompt.trim().length < 3) { setNotice('请至少输入 3 个字符。'); return; }
-    setNotice(''); setBusy(true);
-    try {
-      setRun(mode === 'preview' ? demoStart(prompt.trim()) : await startRun(endpoint, pair, prompt.trim()));
-      setPrompt('');
-    } catch (e) { setNotice(e instanceof Error ? e.message : '任务启动失败'); }
-    finally { setBusy(false); }
-  }
-  async function decide(approved: boolean) {
-    if (!run) return;
+
+  async function refreshNetwork() {
+    if (!connected) return setPage('settings');
     setBusy(true);
-    try { setRun(mode === 'preview' ? demoDecide(run, approved) : await decideRun(endpoint, pair, run.id, approved)); if (approved) setTimeout(refreshFiles, 900); }
-    catch (e) { setNotice(e instanceof Error ? e.message : '审批失败'); }
+    try { setNetwork(await getNetworkHealth(endpoint, pair)); }
+    catch (e) { setNotice(e instanceof Error ? e.message : 'Refresh failed'); }
     finally { setBusy(false); }
   }
-  async function cancel() {
-    if (!run) return;
-    try { setRun(mode === 'preview' ? { ...run, status: 'cancelled', pending: null } : await cancelRun(endpoint, pair, run.id)); }
-    catch (e) { setNotice(e instanceof Error ? e.message : '停止失败'); }
+
+  async function submit() {
+    if (!connected) { setNotice('Connect NEXUS in Settings first.'); setPage('settings'); return; }
+    if (prompt.trim().length < 3) return;
+    setBusy(true); setNotice('');
+    try {
+      setRun(await startRun(endpoint, pair, prompt.trim()));
+      setPrompt('');
+    } catch (e) { setNotice(e instanceof Error ? e.message : 'Unable to start agent'); }
+    finally { setBusy(false); }
   }
-  const sidebar = <View style={s.sidebar}><View style={s.logoRow}><LinearGradient colors={['#75C5FF', '#507AFF']} style={s.logo}><Text style={s.logoN}>N</Text></LinearGradient><View><Text style={s.logoText}>NOVA</Text><Text style={s.logoCaption}>LOCAL AGENT STUDIO</Text></View></View>
-    <Text style={s.navCaption}>WORKSPACE</Text>{nav.map(item => <Pressable key={item.id} onPress={() => { setPage(item.id); if (item.id === 'workspace') void refreshFiles(); }} style={[s.sideNav, page === item.id && s.sideNavActive]}><I name={item.icon} size={18} color={page === item.id ? C.blue : C.dim} /><Text style={[s.sideNavText, page === item.id && { color: C.text }]}>{item.title}</Text>{page === item.id && <View style={s.navAccent} />}</Pressable>)}
-    <View style={s.sideBottom}><View style={s.divider} /><Badge label={modelLabel} color={modelColor} /><Text style={s.sideSmall}>{mode === 'preview' ? '交互预览 · 不修改真实文件' : `模型 ${health?.model ?? '未连接'}`}</Text></View>
-  </View>;
-  const runCard = run && <View style={s.runCard}><View style={s.runHead}><View><Text style={s.micro}>AGENT EXECUTION</Text><Text style={s.runPrompt}>{run.prompt}</Text></View><Badge label={run.status === 'completed' ? 'DONE' : run.status === 'approval' ? 'NEEDS APPROVAL' : run.status === 'failed' ? 'ERROR' : run.status === 'cancelled' ? 'STOPPED' : 'RUNNING'} color={run.status === 'completed' ? C.green : run.status === 'approval' ? C.amber : run.status === 'failed' ? C.red : C.blue} /></View>
-    <View style={s.rule} />{run.events.map((event, i) => <EventRow key={event.id} event={event} last={i === run.events.length - 1} />)}
-    {run.pending && <View style={s.approval}><View style={s.approvalHead}><I name="shield" color={C.amber} /><Text style={s.approvalTitle}>需要你的批准</Text></View><Text style={s.approvalPath}>写入 {run.pending.path}</Text><ScrollView style={s.previewCode}><Text style={s.previewCodeText}>{run.pending.preview}</Text></ScrollView><View style={s.approvalActions}><Pressable onPress={() => decide(false)} disabled={busy} style={s.ghostButton}><Text style={s.ghostText}>拒绝</Text></Pressable><Pressable onPress={() => decide(true)} disabled={busy} style={s.approveButton}><I name="check" size={15} color="#061624" /><Text style={s.approveText}>批准写入</Text></Pressable></View></View>}
-    {active && run.status !== 'approval' && <Pressable onPress={cancel} style={s.stopButton}><I name="square" size={12} color={C.dim} /><Text style={s.stopText}>停止任务</Text></Pressable>}
-  </View>;
-  return <SafeAreaView style={s.root} edges={['top', 'bottom']}><StatusBar barStyle="light-content" backgroundColor={C.bg} /><View style={s.backGlow} /><View style={[s.layout, { maxWidth: desktop ? 1480 : 740 }]}>
-    {desktop && sidebar}
-    <View style={s.main}><View style={s.top}><View style={s.topBrand}>{!desktop && <LinearGradient colors={['#75C5FF', '#507AFF']} style={s.miniLogo}><Text style={s.miniN}>N</Text></LinearGradient>}<Text style={s.topTitle}>{desktop ? nav.find(x => x.id === page)?.title : 'NOVA'}</Text></View><Badge label={modelLabel} color={modelColor} /></View>
-      {!!notice && <Pressable onPress={() => setNotice('')} style={s.notice}><I name="info" size={16} color={C.amber} /><Text style={s.noticeText}>{notice}</Text><I name="x" size={15} color={C.dim} /></Pressable>}
-      <ScrollView key={page} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        {page === 'home' && <><View style={s.overline}><View style={s.liveDot} /><Text style={s.overlineText}>AUTONOMOUS · PRIVATE · YOURS</Text></View>
-          <View style={[s.hero, desktop && s.heroDesktop]}><View style={s.heroCopy}><Text style={s.heroKicker}>YOUR LOCAL INTELLIGENCE</Text><Text style={[s.heroTitle, desktop && { fontSize: 43, lineHeight: 53 }]}>想法交给你。{'\n'}<Text style={s.accentText}>执行交给 NOVA。</Text></Text><Text style={s.heroBody}>给出目标，让 Agent 自己规划、查找资料、调用工具。每一步都看得见；修改文件由你决定。</Text><Pressable onPress={() => setPage('agent')} style={s.heroAction}><Text style={s.heroActionText}>开启一次任务</Text><I name="arrow-up-right" size={19} color="#06111C" /></Pressable></View><View style={s.heroOrb}><Orb size={desktop ? 260 : 210} active={!!active} /></View></View>
-          <View style={s.sectionHeading}><View><Text style={s.micro}>ONE PROMPT. MULTIPLE ACTIONS.</Text><Text style={s.sectionTitle}>让它替你走下一步</Text></View><I name="arrow-down-right" color={C.dim} /></View><View style={[s.cards, desktop && s.cardsDesktop]}>{prompts.map(item => <Pressable key={item.title} onPress={() => jump(item.text)} style={s.actionCard}><View style={[s.actionIcon, { backgroundColor: item.hue + '22' }]}><I name={item.icon} color={item.hue} size={21} /></View><Text style={s.actionTitle}>{item.title}</Text><Text style={s.actionSub}>{item.text}</Text><View style={s.actionArrow}><I name="arrow-up-right" size={17} color={item.hue} /></View></Pressable>)}</View>
-          <View style={s.featureStrip}><I name="shield" color={C.green} size={19} /><View style={{ flex: 1 }}><Text style={s.featureTitle}>控制权一直在你手里</Text><Text style={s.featureText}>本地模型 · 可见的工具过程 · 文件写入审批</Text></View></View>
-        </>}
-        {page === 'agent' && <><View style={s.agentHeader}><View><Text style={s.micro}>MISSION CONTROL</Text><Text style={s.screenTitle}>给它一个目标。</Text><Text style={s.screenSub}>它会决定步骤，必要时调用工具，并把过程展示给你。</Text></View><Orb size={desktop ? 138 : 108} active={!!active} /></View>
-          {!run ? <View style={s.emptyAgent}><View style={s.emptyLine}><I name="command" size={25} color={C.blue} /></View><Text style={s.emptyTitle}>Agent 等待指令</Text><Text style={s.emptyText}>从下方输入一个目标，或选择一个灵感开始。</Text>{prompts.map(item => <Pressable key={item.title} onPress={() => setPrompt(item.text)} style={s.suggestion}><I name={item.icon} color={item.hue} size={17} /><Text style={s.suggestionText}>{item.title}</Text><I name="arrow-up-right" color={C.dim} size={16} /></Pressable>)}</View> : runCard}
-          {mode === 'preview' && <Text style={s.previewNote}>PREVIEW MODE · 上面的工具执行为交互演示。连接本地模型后可处理真实文件。</Text>}
-        </>}
-        {page === 'workspace' && <><Text style={s.micro}>LOCAL KNOWLEDGE</Text><Text style={s.screenTitle}>工作区</Text><Text style={s.screenSub}>Agent 只能访问你指定的本地文档目录。读取可见，写入需批准。</Text>
-          <View style={s.workspaceTop}><View style={s.workspaceIcon}><I name="folder" color={C.blue} size={24} /></View><View style={{ flex: 1 }}><Text style={s.workspaceTitle}>{mode === 'preview' ? '示例工作区' : '我的本地工作区'}</Text><Text style={s.workspaceSub}>{mode === 'preview' ? '3 份演示资料' : `${files.length} 份 .md / .txt 文档`}</Text></View><Pressable onPress={refreshFiles}><I name="refresh-cw" color={C.dim} size={17} /></Pressable></View>
-          {(mode === 'preview' ? ['product-brief.md', 'research-notes.md', 'roadmap.md'] : files).map((name, index) => <Pressable key={name} onPress={() => viewFile(name)} style={s.fileRow}><View style={s.fileIcon}><I name="file-text" color={index % 2 ? '#B7A0FF' : '#81BDFF'} /></View><View style={{ flex: 1 }}><Text style={s.fileName}>{name}</Text><Text style={s.fileSub}>LOCAL DOCUMENT · {name.endsWith('.md') ? 'MARKDOWN' : 'TEXT'}</Text></View><I name="chevron-right" size={18} color={C.dim} /></Pressable>)}
-          {mode === 'local' && !files.length && <View style={s.emptyFiles}><Text style={s.emptyText}>暂无文件。把 .md 或 .txt 放进 data/workspace，或者让 Agent 创建一份。</Text></View>}
-          {openFile && <View style={s.openFile}><View style={s.openFileHead}><Text style={s.openFileTitle}>{openFile.name}</Text><Pressable onPress={() => setOpenFile(null)}><I name="x" color={C.dim} /></Pressable></View><Text style={s.openFileText}>{openFile.content}</Text></View>}
-        </>}
-        {page === 'settings' && <><Text style={s.micro}>LOCAL CONTROL</Text><Text style={s.screenTitle}>连接你自己的 AI。</Text><Text style={s.screenSub}>模型在你的电脑上运行。手机和电脑共享同一个本地 Agent 工作区。</Text>
-          <View style={s.settingsCard}><View style={s.settingsHeader}><I name="cpu" color={C.blue} size={22} /><View><Text style={s.settingsTitle}>运行模式</Text><Text style={s.settingsSub}>先体验，再接入真实 Ollama 模型</Text></View></View><View style={s.modeRow}><Pressable onPress={() => setMode('preview')} style={[s.modeButton, mode === 'preview' && s.modeActive]}><Text style={[s.modeText, mode === 'preview' && s.modeTextActive]}>交互预览</Text></Pressable><Pressable onPress={() => setMode('local')} style={[s.modeButton, mode === 'local' && s.modeActive]}><Text style={[s.modeText, mode === 'local' && s.modeTextActive]}>本地 Agent</Text></Pressable></View></View>
-          <View style={s.settingsCard}><Text style={s.settingsTitle}>本地服务地址</Text><Text style={s.settingsSub}>电脑填 localhost；手机填电脑在同一 Wi-Fi 下的局域网 IP。</Text><TextInput value={editedEndpoint} onChangeText={setEditedEndpoint} autoCapitalize="none" autoCorrect={false} keyboardType="url" placeholder="http://192.168.1.10:8787" placeholderTextColor={C.dim} style={s.textField} /><Text style={[s.settingsTitle, { marginTop: 21 }]}>配对码</Text><Text style={s.settingsSub}>启动服务时显示在电脑终端；不会提交到云端。</Text><TextInput value={editedPair} onChangeText={setEditedPair} autoCapitalize="none" autoCorrect={false} secureTextEntry placeholder="从终端复制配对码" placeholderTextColor={C.dim} style={s.textField} /><Pressable onPress={connect} disabled={busy} style={s.connectButton}>{busy ? <ActivityIndicator color="#07111D" /> : <><I name="link" color="#07111D" size={17} /><Text style={s.connectText}>连接本地 Agent</Text></>}</Pressable><View style={s.connectionLine}><View style={[s.badgeDot, { backgroundColor: health?.modelReady ? C.green : C.amber }]} /><Text style={s.connectionText}>{health?.modelReady ? `${health.model} 已就绪` : health?.online ? '服务已连接 · 模型尚未就绪' : '未连接到本地服务'}</Text></View></View>
-          <View style={s.helpCard}><I name="info" color={C.blue} size={20} /><View style={{ flex: 1 }}><Text style={s.helpTitle}>为什么手机不能填 localhost？</Text><Text style={s.helpText}>localhost 总是指当前设备本身。手机要连接电脑运行的 Agent，需使用电脑的局域网地址；服务仍只在你的本地网络运行。</Text></View></View>
-        </>}
-      </ScrollView>
-      {page === 'agent' && <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}><View style={s.composer}><View style={s.composerInput}><I name="terminal" color={C.blue} size={19} /><TextInput value={prompt} onChangeText={setPrompt} placeholder="交给 NOVA 一个目标…" placeholderTextColor={C.dim} style={s.promptInput} multiline maxLength={2000} /><Pressable onPress={submit} disabled={busy || !!active} style={[s.sendButton, (busy || !!active) && { opacity: .45 }]}><I name="arrow-up" size={18} color="#07111D" /></Pressable></View><Text style={s.composerHint}>{mode === 'preview' ? '交互预览 · 不会处理真实资料' : '本地运行 · 文件写入由你批准'}</Text></View></KeyboardAvoidingView>}
+
+  const navigation = useMemo(() => [
+    { id: 'dashboard' as Page, label: 'Dashboard', icon: 'activity' as IconName },
+    { id: 'agent' as Page, label: 'AI Agent', icon: 'command' as IconName },
+    { id: 'settings' as Page, label: 'Settings', icon: 'sliders' as IconName },
+  ], []);
+
+  const sidebar = <View style={st.sidebar}>
+    <View style={st.brand}>
+      <LinearGradient colors={['#79C9FF', '#5572FF']} style={st.brandLogo}><Text style={st.brandN}>N</Text></LinearGradient>
+      <View><Text style={st.brandName}>NEXUS</Text><Text style={st.brandSub}>AI NETWORK COMMAND CENTER</Text></View>
     </View>
-    {desktop && <View style={s.rail}><Text style={s.railOverline}>SYSTEM STATUS</Text><View style={s.railPanel}><Orb size={142} active={!!active} /><Badge label={modelLabel} color={modelColor} /><Text style={s.railTitle}>{active ? '正在执行任务' : '随时准备开始'}</Text><Text style={s.railSub}>{mode === 'preview' ? '体验 Agent 如何思考、调用工具和请求审批。' : health?.modelReady ? '你的本地模型已就绪。' : '请先在设置中连接模型。'}</Text></View><Text style={s.railOverline}>CAPABILITIES</Text>{[['folder', '本地文档'], ['search', '搜索与阅读'], ['divide', '精确计算'], ['shield', '写入审批']].map(([icon, label]) => <View key={label} style={s.capability}><I name={icon as IconName} size={16} color={C.blue} /><Text style={s.capabilityText}>{label}</Text><View style={s.capabilityDot} /></View>)}<View style={s.railFoot}><I name="lock" size={13} color={C.green} /><Text style={s.railFootText}>DESIGNED FOR LOCAL CONTROL</Text></View></View>}
-  </View>
-  {!desktop && <View style={s.bottomNav}>{nav.map(item => <Pressable key={item.id} onPress={() => { setPage(item.id); if (item.id === 'workspace') void refreshFiles(); }} style={s.bottomItem}><View style={[s.bottomIcon, page === item.id && s.bottomIconActive]}><I name={item.icon} color={page === item.id ? C.blue : C.dim} size={20} /></View><Text style={[s.bottomLabel, page === item.id && { color: C.blue }]}>{item.title}</Text></Pressable>)}</View>}
+    <Text style={st.navLabel}>COMMAND</Text>
+    {navigation.map(n => <Pressable key={n.id} onPress={() => setPage(n.id)} style={[st.navItem, page === n.id && st.navActive]}>
+      <Icon name={n.icon} color={page === n.id ? '#79C1FF' : '#71839B'} />
+      <Text style={[st.navText, page === n.id && { color: '#EEF6FF' }]}>{n.label}</Text>
+    </Pressable>)}
+    <View style={st.sideFoot}>
+      <Pill text={live ? 'PACKET TRACER LIVE' : 'PREVIEW DATA'} good={live} />
+      <Text style={st.sideHint}>{live ? 'Controller :58000 connected' : 'Connect your local gateway to read live devices.'}</Text>
+    </View>
+  </View>;
+
+  return <SafeAreaView style={st.root} edges={['top', 'bottom']}>
+    <StatusBar barStyle="light-content" />
+    <View style={st.glow} />
+    <View style={st.shell}>
+      {desktop && sidebar}
+      <View style={st.main}>
+        <View style={st.topbar}>
+          <View style={st.topLeft}>
+            {!desktop && <LinearGradient colors={['#79C9FF', '#5572FF']} style={st.mobileLogo}><Text style={st.mobileN}>N</Text></LinearGradient>}
+            <View><Text style={st.topTitle}>{desktop ? navigation.find(x => x.id === page)?.label : 'NEXUS'}</Text><Text style={st.topSub}>{live ? 'LIVE TELEMETRY' : 'PREVIEW MODE'}</Text></View>
+          </View>
+          <Pill text={live ? 'LIVE' : 'PREVIEW'} good={live} />
+        </View>
+
+        {!!notice && <Pressable onPress={() => setNotice('')} style={st.notice}><Icon name="info" color="#FFD58A" size={16} /><Text style={st.noticeText}>{notice}</Text><Icon name="x" color="#8B9AB0" size={15} /></Pressable>}
+
+        <ScrollView contentContainerStyle={st.scroll} showsVerticalScrollIndicator={false}>
+          {page === 'dashboard' && <>
+            <View style={st.hero}>
+              <View style={st.heroCopy}>
+                <Text style={st.eyebrow}>NETWORK INTELLIGENCE · LOCAL FIRST</Text>
+                <Text style={st.heroTitle}>Your network.{"\n"}<Text style={st.heroAccent}>Under one command.</Text></Text>
+                <Text style={st.heroBody}>NEXUS reads your Cisco Packet Tracer controller, tracks discovered infrastructure and gives the local AI agent real network context.</Text>
+                <View style={st.heroActions}>
+                  <Pressable onPress={() => setPage('agent')} style={st.primary}><Text style={st.primaryText}>Ask NEXUS</Text><Icon name="arrow-up-right" color="#06111C" /></Pressable>
+                  <Pressable onPress={refreshNetwork} style={st.secondary}><Icon name="refresh-cw" size={15} color="#8CC8FF" /><Text style={st.secondaryText}>Refresh</Text></Pressable>
+                </View>
+              </View>
+              <View style={st.heroOrb}><Orb size={desktop ? 245 : 190} active={live} /></View>
+            </View>
+
+            <View style={st.healthHead}>
+              <View><Text style={st.eyebrow}>NETWORK HEALTH</Text><Text style={st.sectionTitle}>{statusText}</Text></View>
+              <Pill text={live ? 'REAL-TIME' : 'SAMPLE'} good={statusGood} />
+            </View>
+            <View style={[st.metrics, desktop && { flexDirection: 'row' }]}>
+              <Metric label="Discovered devices" value={shown.deviceCount} icon="server" />
+              <Metric label="Online" value={shown.reachableCount} icon="check-circle" />
+              <Metric label="Offline" value={shown.unreachableCount} icon="alert-circle" />
+              <Metric label="Controller" value={shown.controllerOnline ? 'UP' : 'DOWN'} icon="radio" />
+            </View>
+
+            <View style={st.sectionRow}><Text style={st.sectionTitle}>Infrastructure</Text><Text style={st.timestamp}>{live ? 'Auto-refresh 4s' : 'Preview'}</Text></View>
+            <View style={[st.deviceGrid, desktop && { flexDirection: 'row' }]}>
+              {shown.devices.map(device => <View key={device.id} style={st.deviceCard}>
+                <View style={st.deviceTop}>
+                  <View style={st.deviceIcon}><Icon name={device.role === 'edge-router' ? 'share-2' : 'layers'} size={22} color="#7DC3FF" /></View>
+                  <Pill text={device.status.toUpperCase()} good={device.status === 'online'} />
+                </View>
+                <Text style={st.deviceName}>{device.name}</Text>
+                <Text style={st.deviceRole}>{device.role.replace('-', ' ').toUpperCase()}</Text>
+                <View style={st.rule} />
+                <View style={st.infoRow}><Text style={st.infoKey}>Management IP</Text><Text style={st.infoValue}>{device.managementIp}</Text></View>
+                <View style={st.infoRow}><Text style={st.infoKey}>Interfaces</Text><Text style={st.infoValue}>{device.interfaces}</Text></View>
+                <View style={st.infoRow}><Text style={st.infoKey}>MAC</Text><Text style={st.infoValue}>{device.macAddress || '—'}</Text></View>
+                <View style={st.infoRow}><Text style={st.infoKey}>Reachability</Text><Text style={[st.infoValue, { color: device.status === 'online' ? '#68E1C4' : '#FF8E9C' }]}>{device.reachabilityStatus}</Text></View>
+              </View>)}
+            </View>
+
+            <View style={st.aiStrip}>
+              <View style={st.aiIcon}><Icon name="zap" color="#B79CFF" /></View>
+              <View style={{ flex: 1 }}><Text style={st.aiTitle}>AI network analysis is ready</Text><Text style={st.aiText}>Ask about discovered devices, reachability and overall health. NEXUS uses live controller data instead of guessing.</Text></View>
+              <Pressable onPress={() => { setPrompt('Analyse my current Packet Tracer network health and tell me what needs attention.'); setPage('agent'); }}><Icon name="arrow-right" color="#B79CFF" /></Pressable>
+            </View>
+          </>}
+
+          {page === 'agent' && <>
+            <View style={st.agentHero}><View><Text style={st.eyebrow}>AGENTIC NETWORK OPS</Text><Text style={st.sectionTitle}>Ask the network directly.</Text><Text style={st.heroBody}>The local model can call NEXUS network tools and reason over the Packet Tracer controller inventory.</Text></View><Orb size={130} active={!!run && ['thinking','resuming'].includes(run.status)} /></View>
+            <View style={st.promptCard}>
+              <TextInput value={prompt} onChangeText={setPrompt} placeholder="e.g. Analyse my network health…" placeholderTextColor="#687B95" multiline style={st.prompt} />
+              <Pressable onPress={submit} disabled={busy} style={st.send}>{busy ? <ActivityIndicator color="#06111C" /> : <Icon name="arrow-up" color="#06111C" />}</Pressable>
+            </View>
+            <View style={st.quickRow}>
+              {['Show me all discovered network devices.', 'Is my Packet Tracer network healthy?', 'Which device is the core switch?'].map(q => <Pressable key={q} onPress={() => setPrompt(q)} style={st.quick}><Text style={st.quickText}>{q}</Text></Pressable>)}
+            </View>
+            {run && <View style={st.runCard}>
+              <View style={st.sectionRow}><Text style={st.runTitle}>{run.prompt}</Text><Pill text={run.status.toUpperCase()} good={run.status === 'completed'} /></View>
+              {run.events.map(e => <View key={e.id} style={st.event}><Icon name={e.kind === 'error' ? 'alert-triangle' : e.kind === 'tool' ? 'terminal' : 'circle'} size={14} color="#7DC3FF" /><View style={{ flex: 1 }}><Text style={st.eventTitle}>{e.title}</Text>{!!e.detail && <Text style={st.eventText}>{e.detail}</Text>}</View></View>)}
+              {!!run.answer && <View style={st.answer}><Text style={st.answerLabel}>NEXUS</Text><Text style={st.answerText}>{run.answer}</Text></View>}
+            </View>}
+          </>}
+
+          {page === 'settings' && <>
+            <Text style={st.eyebrow}>LOCAL CONNECTION</Text><Text style={st.sectionTitle}>Connect NEXUS.</Text><Text style={st.heroBody}>Use the pairing code printed by the Node gateway. Packet Tracer must stay open with NEXUS-CTRL Real World Access listening on port 58000.</Text>
+            <View style={st.settingsCard}>
+              <Text style={st.fieldLabel}>Gateway address</Text>
+              <TextInput value={editEndpoint} onChangeText={setEditEndpoint} autoCapitalize="none" style={st.field} placeholder="http://localhost:8787" placeholderTextColor="#61738C" />
+              <Text style={st.fieldLabel}>Pairing code</Text>
+              <TextInput value={editPair} onChangeText={setEditPair} autoCapitalize="none" secureTextEntry style={st.field} placeholder="Paste code from terminal" placeholderTextColor="#61738C" />
+              <Pressable onPress={connect} disabled={busy} style={st.connect}>{busy ? <ActivityIndicator color="#06111C" /> : <><Icon name="link" color="#06111C" /><Text style={st.connectText}>Connect live network</Text></>}</Pressable>
+              <View style={st.connection}><View style={[st.dot, { backgroundColor: live ? '#68E1C4' : '#FFC96D' }]} /><Text style={st.connectionText}>{live ? `Connected · ${shown.deviceCount} devices · ${serverHealth?.modelReady ? 'AI ready' : 'AI model not ready'}` : 'Not connected · dashboard is showing preview data'}</Text></View>
+            </View>
+          </>}
+        </ScrollView>
+
+        {!desktop && <View style={st.bottomNav}>{navigation.map(n => <Pressable key={n.id} onPress={() => setPage(n.id)} style={st.bottomItem}><Icon name={n.icon} color={page === n.id ? '#7DC3FF' : '#6E819A'} /><Text style={[st.bottomText, page === n.id && { color: '#DDEEFF' }]}>{n.label}</Text></Pressable>)}</View>}
+      </View>
+    </View>
   </SafeAreaView>;
 }
-export default function App() { return <SafeAreaProvider><AppContent /></SafeAreaProvider>; }
+
+export default function App() {
+  return <SafeAreaProvider><AppContent /></SafeAreaProvider>;
+}
+
+const st = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#07101A' }, glow: { position: 'absolute', width: 700, height: 700, borderRadius: 400, backgroundColor: '#102A4A', opacity: .35, right: -360, top: -350 },
+  shell: { flex: 1, flexDirection: 'row', maxWidth: 1500, width: '100%', alignSelf: 'center' }, sidebar: { width: 250, borderRightWidth: 1, borderRightColor: '#1B2A3E', backgroundColor: '#0A121E', padding: 20 },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 11, marginBottom: 50 }, brandLogo: { width: 39, height: 39, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, brandN: { color: '#06111C', fontSize: 25, fontWeight: '900' }, brandName: { color: '#F3F7FF', fontWeight: '900', letterSpacing: 3, fontSize: 18 }, brandSub: { color: '#62758E', fontSize: 6.5, marginTop: 3, letterSpacing: 1.1 },
+  navLabel: { color: '#5E718A', letterSpacing: 2, fontSize: 9, fontWeight: '800', marginBottom: 12 }, navItem: { height: 48, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 13, borderRadius: 13, marginBottom: 6 }, navActive: { backgroundColor: '#15283D', borderWidth: 1, borderColor: '#284A69' }, navText: { color: '#74859C', fontSize: 13, fontWeight: '700' }, sideFoot: { marginTop: 'auto' }, sideHint: { color: '#65778F', fontSize: 10, lineHeight: 16, marginTop: 12 },
+  main: { flex: 1, minWidth: 0 }, topbar: { minHeight: 72, borderBottomWidth: 1, borderBottomColor: '#182638', paddingHorizontal: 26, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, topLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 }, topTitle: { color: '#EDF5FF', fontSize: 15, fontWeight: '850' }, topSub: { color: '#5D718A', fontSize: 8, letterSpacing: 1.5, marginTop: 3, fontWeight: '800' }, mobileLogo: { width: 31, height: 31, borderRadius: 9, alignItems: 'center', justifyContent: 'center' }, mobileN: { color: '#06111C', fontWeight: '900', fontSize: 19 },
+  scroll: { padding: 26, paddingBottom: 70 }, notice: { margin: 16, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#604F31', backgroundColor: '#2B241A', flexDirection: 'row', alignItems: 'center', gap: 9 }, noticeText: { flex: 1, color: '#FFD58A', fontSize: 11 },
+  pill: { flexDirection: 'row', alignItems: 'center', gap: 7, borderWidth: 1, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 6 }, dot: { width: 6, height: 6, borderRadius: 4 }, pillText: { fontSize: 9, letterSpacing: .8, fontWeight: '900' },
+  hero: { backgroundColor: '#0E1B2D', borderWidth: 1, borderColor: '#274563', borderRadius: 27, padding: 30, minHeight: 320, flexDirection: 'row', overflow: 'hidden', marginBottom: 32 }, heroCopy: { flex: 1, justifyContent: 'center', zIndex: 2 }, eyebrow: { color: '#72B9FA', fontSize: 9, letterSpacing: 2.1, fontWeight: '900', marginBottom: 13 }, heroTitle: { color: '#F1F6FF', fontSize: 38, lineHeight: 47, fontWeight: '900', letterSpacing: -1 }, heroAccent: { color: '#75BCFF' }, heroBody: { color: '#93A5BD', fontSize: 12, lineHeight: 20, maxWidth: 520, marginTop: 12 }, heroActions: { flexDirection: 'row', gap: 10, marginTop: 22 }, primary: { backgroundColor: '#79BDFF', borderRadius: 11, paddingHorizontal: 17, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 10 }, primaryText: { color: '#06111C', fontWeight: '900', fontSize: 12 }, secondary: { borderWidth: 1, borderColor: '#34506B', borderRadius: 11, paddingHorizontal: 15, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }, secondaryText: { color: '#A8CFFF', fontWeight: '800', fontSize: 11 }, heroOrb: { justifyContent: 'center', alignItems: 'center', minWidth: 230 },
+  healthHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 15 }, sectionTitle: { color: '#EFF6FF', fontSize: 24, fontWeight: '900' }, sectionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }, timestamp: { color: '#64778F', fontSize: 10 },
+  metrics: { gap: 11, marginBottom: 30 }, metric: { flex: 1, minHeight: 120, borderWidth: 1, borderColor: '#203249', backgroundColor: '#101A28', borderRadius: 17, padding: 17 }, metricIcon: { width: 34, height: 34, borderRadius: 10, backgroundColor: '#162B43', alignItems: 'center', justifyContent: 'center', marginBottom: 15 }, metricValue: { color: '#F2F7FF', fontSize: 25, fontWeight: '900' }, metricLabel: { color: '#73869E', fontSize: 10, marginTop: 5, letterSpacing: .4 },
+  deviceGrid: { gap: 12, marginTop: 14, marginBottom: 28 }, deviceCard: { flex: 1, backgroundColor: '#101A28', borderWidth: 1, borderColor: '#24374E', borderRadius: 19, padding: 19 }, deviceTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, deviceIcon: { width: 43, height: 43, borderRadius: 13, backgroundColor: '#162C44', alignItems: 'center', justifyContent: 'center' }, deviceName: { color: '#F2F7FF', fontWeight: '900', fontSize: 20, marginTop: 17 }, deviceRole: { color: '#69809A', fontWeight: '800', fontSize: 9, letterSpacing: 1.5, marginTop: 4 }, rule: { height: 1, backgroundColor: '#213249', marginVertical: 16 }, infoRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginVertical: 5 }, infoKey: { color: '#6E819A', fontSize: 10 }, infoValue: { color: '#C9D8EA', fontSize: 10, fontWeight: '750' },
+  aiStrip: { borderRadius: 17, borderWidth: 1, borderColor: '#463D6E', backgroundColor: '#18182A', padding: 17, flexDirection: 'row', alignItems: 'center', gap: 13 }, aiIcon: { width: 39, height: 39, borderRadius: 12, backgroundColor: '#282143', alignItems: 'center', justifyContent: 'center' }, aiTitle: { color: '#ECE8FF', fontWeight: '900', fontSize: 13 }, aiText: { color: '#958CAD', fontSize: 10, lineHeight: 16, marginTop: 4 },
+  agentHero: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }, promptCard: { backgroundColor: '#101B2A', borderWidth: 1, borderColor: '#31506F', borderRadius: 16, flexDirection: 'row', alignItems: 'center', paddingLeft: 15 }, prompt: { flex: 1, minHeight: 58, maxHeight: 130, color: '#EEF6FF', fontSize: 13, paddingVertical: 13 }, send: { width: 38, height: 38, borderRadius: 11, backgroundColor: '#78BDFF', alignItems: 'center', justifyContent: 'center', marginRight: 10 }, quickRow: { gap: 8, marginTop: 12, marginBottom: 22 }, quick: { borderWidth: 1, borderColor: '#25384F', backgroundColor: '#0F1825', borderRadius: 12, padding: 12 }, quickText: { color: '#91A8C1', fontSize: 11 },
+  runCard: { borderRadius: 19, borderWidth: 1, borderColor: '#263950', backgroundColor: '#101A28', padding: 18 }, runTitle: { color: '#EDF5FF', fontWeight: '850', fontSize: 13, flex: 1 }, event: { flexDirection: 'row', gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#1D2D41' }, eventTitle: { color: '#DDE9F8', fontSize: 11, fontWeight: '800' }, eventText: { color: '#7E91A8', fontSize: 10, lineHeight: 16, marginTop: 3 }, answer: { backgroundColor: '#13253A', borderRadius: 13, padding: 15, marginTop: 14 }, answerLabel: { color: '#79BDFF', fontSize: 9, fontWeight: '900', letterSpacing: 1.5 }, answerText: { color: '#D6E3F2', fontSize: 12, lineHeight: 20, marginTop: 8 },
+  settingsCard: { backgroundColor: '#101A28', borderWidth: 1, borderColor: '#273950', borderRadius: 19, padding: 20, marginTop: 24, maxWidth: 650 }, fieldLabel: { color: '#DDE8F5', fontWeight: '800', fontSize: 11, marginTop: 10 }, field: { color: '#EAF3FF', backgroundColor: '#0A131E', borderWidth: 1, borderColor: '#2A3F58', borderRadius: 11, padding: 13, marginTop: 8, marginBottom: 12 }, connect: { backgroundColor: '#79BDFF', borderRadius: 11, padding: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 8 }, connectText: { color: '#06111C', fontWeight: '900', fontSize: 12 }, connection: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 15 }, connectionText: { color: '#8194AB', fontSize: 10 },
+  bottomNav: { height: 66, borderTopWidth: 1, borderTopColor: '#1B2A3D', backgroundColor: '#0A131E', flexDirection: 'row', justifyContent: 'space-around', paddingTop: 8 }, bottomItem: { alignItems: 'center', width: 85 }, bottomText: { color: '#687B95', fontSize: 9, marginTop: 5, fontWeight: '750' },
+});
