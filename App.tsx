@@ -213,6 +213,50 @@ function AppContent() {
             </View>
           </>}
 
+          {page === 'topology' && <>
+            <View style={st.sectionRow}><View><Text style={st.eyebrow}>LIVE NETWORK MAP</Text><Text style={st.sectionTitle}>Topology</Text></View><Pill text={topology ? 'LIVE GRAPH' : 'NO LIVE DATA'} good={!!topology} /></View>
+            <Text style={st.heroBody}>This view combines controller-discovered devices and hosts with the known lab backbone. Links marked inferred are derived from the current lab model when Packet Tracer does not expose a direct host attachment.</Text>
+            <View style={st.topologyBoard}>
+              <View style={st.topologyCoreRow}>
+                {(topology?.nodes || []).filter(n => n.kind === 'device').map(n => <View key={n.id} style={[st.topologyNode, n.role === 'edge-router' && st.topologyNodeEdge]}>
+                  <View style={st.topologyNodeIcon}><Icon name={n.role === 'edge-router' ? 'share-2' : 'layers'} color="#7BC3FF" size={20} /></View>
+                  <Text style={st.topologyNodeName}>{n.label}</Text><Text style={st.topologyNodeMeta}>{n.ip || n.zone}</Text>
+                </View>)}
+              </View>
+              <View style={st.topologyLine}><View style={st.topologyPulse} /></View>
+              <View style={st.hostGrid}>
+                {(topology?.nodes || []).filter(n => n.kind === 'host').map(n => <View key={n.id} style={[st.hostNode, n.role === 'attacker' && st.hostNodeThreat]}>
+                  <Icon name={n.role === 'attacker' ? 'alert-triangle' : 'monitor'} color={n.role === 'attacker' ? '#FF8D9A' : '#79BDFF'} size={17} />
+                  <Text style={st.hostName}>{n.label}</Text>
+                  <Text style={st.hostMeta}>{n.ip || 'No IP'} · {n.zone}</Text>
+                  {n.vlan ? <Text style={st.hostVlan}>VLAN {n.vlan}</Text> : null}
+                </View>)}
+              </View>
+            </View>
+            <View style={st.legendCard}><Text style={st.legendTitle}>Link intelligence</Text>{(topology?.links || []).slice(0,12).map(l => <View key={l.id} style={st.linkRow}><View style={st.linkDot} /><Text style={st.linkText}>{l.label || 'Network link'}</Text><Text style={st.linkSource}>{l.sourceType}</Text></View>)}</View>
+          </>}
+
+          {page === 'security' && <>
+            <View style={st.sectionRow}><View><Text style={st.eyebrow}>DEFENSIVE MONITORING</Text><Text style={st.sectionTitle}>Security posture</Text></View><Pill text={(security?.posture || 'unknown').toUpperCase()} good={security?.posture === 'normal'} /></View>
+            <Text style={st.heroBody}>NEXUS combines controller reachability with the lab VLAN plan and explicit simulation markers. These are defensive heuristics, not IDS/IPS verdicts.</Text>
+            <View style={[st.metrics, desktop && { flexDirection: 'row' }]}>
+              <Metric label="Observed hosts" value={security?.hostCount ?? 0} icon="monitor" />
+              <Metric label="Security alerts" value={security?.alertCount ?? 0} icon="shield" />
+              <Metric label="Critical" value={security?.criticalCount ?? 0} icon="alert-octagon" />
+              <Metric label="High" value={security?.highCount ?? 0} icon="alert-triangle" />
+            </View>
+            <View style={st.securityPanel}>
+              <View style={st.sectionRow}><Text style={st.securityTitle}>Detection feed</Text><Pressable onPress={refreshNetwork}><Icon name="refresh-cw" color="#7DC3FF" size={16} /></Pressable></View>
+              {(security?.alerts || []).length ? (security?.alerts || []).map(a => <View key={a.id} style={[st.alertCard, a.severity === 'critical' && st.alertCritical]}>
+                <View style={st.alertIcon}><Icon name={a.severity === 'critical' ? 'alert-octagon' : a.severity === 'high' ? 'alert-triangle' : 'info'} color={a.severity === 'critical' ? '#FF7E8D' : a.severity === 'high' ? '#FFC66D' : '#79BDFF'} /></View>
+                <View style={{ flex: 1 }}><View style={st.alertHead}><Text style={st.alertTitle}>{a.title}</Text><Text style={st.alertSeverity}>{a.severity.toUpperCase()}</Text></View><Text style={st.alertDetail}>{a.detail}</Text></View>
+              </View>) : <View style={st.emptySecure}><Icon name="shield" color="#68E1C4" size={28} /><Text style={st.emptySecureTitle}>No active NEXUS alerts</Text><Text style={st.emptySecureText}>No current heuristic matched. This does not mean the network has been exhaustively scanned.</Text></View>}
+            </View>
+            <Pressable onPress={() => { setPrompt('Review the current security analysis, explain every alert with evidence, and recommend defensive next checks without assuming compromise.'); setPage('agent'); }} style={st.aiStrip}>
+              <View style={st.aiIcon}><Icon name="cpu" color="#B79CFF" /></View><View style={{ flex: 1 }}><Text style={st.aiTitle}>Ask NEXUS to investigate</Text><Text style={st.aiText}>The agent can inspect live hosts, topology, segmentation and security heuristics, then explain what is observed versus inferred.</Text></View><Icon name="arrow-right" color="#B79CFF" />
+            </Pressable>
+          </>}
+
           {page === 'agent' && <>
             <View style={st.agentHero}><View><Text style={st.eyebrow}>AGENTIC NETWORK OPS</Text><Text style={st.sectionTitle}>Ask the network directly.</Text><Text style={st.heroBody}>The local model can call NEXUS network tools and reason over the Packet Tracer controller inventory.</Text></View><Orb size={130} active={!!run && ['thinking','resuming'].includes(run.status)} /></View>
             <View style={st.promptCard}>
