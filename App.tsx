@@ -5,6 +5,7 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Orb } from './src/Orb';
+import { AnimatedBackdrop, PulseRail, ScanRing, ThinkingDots } from './src/NexusVisuals';
 import { AgentRun, Health, NetworkHealth, NetworkTopology, SecurityAnalysis } from './src/types';
 import { checkHealth, defaultEndpoint, getNetworkHealth, getNetworkTopology, getRun, getSecurityAnalysis, startRun } from './src/api';
 
@@ -149,6 +150,7 @@ function AppContent() {
 
   return <SafeAreaView style={st.root} edges={['top', 'bottom']}>
     <StatusBar barStyle="light-content" />
+    <AnimatedBackdrop />
     <View style={st.glow} />
     <View style={st.shell}>
       {desktop && sidebar}
@@ -223,7 +225,7 @@ function AppContent() {
                   <Text style={st.topologyNodeName}>{n.label}</Text><Text style={st.topologyNodeMeta}>{n.ip || n.zone}</Text>
                 </View>)}
               </View>
-              <View style={st.topologyLine}><View style={st.topologyPulse} /></View>
+              <View style={st.topologyLine}><PulseRail vertical /></View>
               <View style={st.hostGrid}>
                 {(topology?.nodes || []).filter(n => n.kind === 'host').map(n => <View key={n.id} style={[st.hostNode, n.role === 'attacker' && st.hostNodeThreat]}>
                   <Icon name={n.role === 'attacker' ? 'alert-triangle' : 'monitor'} color={n.role === 'attacker' ? '#FF8D9A' : '#79BDFF'} size={17} />
@@ -248,7 +250,7 @@ function AppContent() {
             <View style={st.securityPanel}>
               <View style={st.sectionRow}><Text style={st.securityTitle}>Detection feed</Text><Pressable onPress={refreshNetwork}><Icon name="refresh-cw" color="#7DC3FF" size={16} /></Pressable></View>
               {(security?.alerts || []).length ? (security?.alerts || []).map(a => <View key={a.id} style={[st.alertCard, a.severity === 'critical' && st.alertCritical]}>
-                <View style={st.alertIcon}><Icon name={a.severity === 'critical' ? 'alert-octagon' : a.severity === 'high' ? 'alert-triangle' : 'info'} color={a.severity === 'critical' ? '#FF7E8D' : a.severity === 'high' ? '#FFC66D' : '#79BDFF'} /></View>
+                <View style={st.alertIcon}><ScanRing danger={a.severity === 'critical'} /></View>
                 <View style={{ flex: 1 }}><View style={st.alertHead}><Text style={st.alertTitle}>{a.title}</Text><Text style={st.alertSeverity}>{a.severity.toUpperCase()}</Text></View><Text style={st.alertDetail}>{a.detail}</Text></View>
               </View>) : <View style={st.emptySecure}><Icon name="shield" color="#68E1C4" size={28} /><Text style={st.emptySecureTitle}>No active NEXUS alerts</Text><Text style={st.emptySecureText}>No current heuristic matched. This does not mean the network has been exhaustively scanned.</Text></View>}
             </View>
@@ -258,18 +260,64 @@ function AppContent() {
           </>}
 
           {page === 'agent' && <>
-            <View style={st.agentHero}><View><Text style={st.eyebrow}>AGENTIC NETWORK OPS</Text><Text style={st.sectionTitle}>Ask the network directly.</Text><Text style={st.heroBody}>The local model can call NEXUS network tools and reason over the Packet Tracer controller inventory.</Text></View><Orb size={130} active={!!run && ['thinking','resuming'].includes(run.status)} /></View>
-            <View style={st.promptCard}>
-              <TextInput value={prompt} onChangeText={setPrompt} placeholder="e.g. Analyse my network health…" placeholderTextColor="#687B95" multiline style={st.prompt} />
-              <Pressable onPress={submit} disabled={busy} style={st.send}>{busy ? <ActivityIndicator color="#06111C" /> : <Icon name="arrow-up" color="#06111C" />}</Pressable>
+            <View style={[st.agentCommand, desktop && { flexDirection: 'row' }]}>
+              <View style={st.agentLeft}>
+                <View style={st.agentHeroV2}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={st.eyebrow}>NEXUS COGNITIVE OPS</Text>
+                    <Text style={st.agentTitle}>Command the network.{"\n"}<Text style={st.agentAccent}>Watch NEXUS reason.</Text></Text>
+                    <Text style={st.heroBody}>Ask in plain language. NEXUS can inspect live devices, hosts, topology, reachability, VLAN context and defensive alerts before it answers.</Text>
+                  </View>
+                  <View style={st.agentOrbWrap}><Orb size={150} active={busy || !!run && ['thinking','resuming'].includes(run.status)} /></View>
+                </View>
+
+                <View style={st.commandBox}>
+                  <View style={st.commandPrefix}><Icon name="terminal" color="#71CCFF" size={17} /><Text style={st.commandPrefixText}>NEXUS://</Text></View>
+                  <TextInput value={prompt} onChangeText={setPrompt} placeholder="Ask NEXUS to inspect, explain, compare or investigate…" placeholderTextColor="#657A94" multiline style={st.commandInput} />
+                  <Pressable onPress={submit} disabled={busy} style={[st.commandSend, busy && { opacity:.65 }]}>{busy ? <ThinkingDots /> : <><Text style={st.commandSendText}>EXECUTE</Text><Icon name="arrow-up-right" color="#06111C" size={16} /></>}</Pressable>
+                </View>
+
+                <View style={st.suggestionGrid}>
+                  {[
+                    ['shield','Investigate alerts','Review the current security analysis, explain every alert with evidence, and recommend defensive next checks without assuming compromise.'],
+                    ['git-branch','Explain topology','Explain my current network topology, trust zones and which links are observed versus inferred.'],
+                    ['activity','Health check','Analyse my current Packet Tracer network health and tell me what needs attention.'],
+                    ['eye','Find attacker host','Locate ATTACKER-PC, show its VLAN, interface and surrounding context, and clearly distinguish simulation markers from proof.'],
+                  ].map(([icon,title,q]) => <Pressable key={title} onPress={() => setPrompt(q)} style={st.suggestionCard}>
+                    <View style={st.suggestionIcon}><Icon name={icon as IconName} color="#7CC8FF" size={16} /></View>
+                    <View style={{flex:1}}><Text style={st.suggestionTitle}>{title}</Text><Text style={st.suggestionSub}>{q}</Text></View>
+                    <Icon name="arrow-up-right" color="#5A708B" size={15} />
+                  </Pressable>)}
+                </View>
+              </View>
+
+              <View style={st.agentRight}>
+                <View style={st.cognitivePanel}>
+                  <View style={st.cognitiveHead}><Text style={st.cognitiveLabel}>COGNITIVE STATUS</Text><Pill text={serverHealth?.modelReady ? 'MODEL READY' : 'MODEL FALLBACK'} good={!!serverHealth?.modelReady} /></View>
+                  <View style={st.cognitiveModel}><ScanRing /><View><Text style={st.cognitiveModelName}>{serverHealth?.model || 'Auto-select'}</Text><Text style={st.cognitiveModelMeta}>Local Ollama · tool-enabled workflow</Text></View></View>
+                  <View style={st.cognitiveRule} />
+                  {[
+                    ['Database','Packet Tracer context', live ? 'LIVE' : 'WAITING'],
+                    ['GitBranch','Topology reasoning', topology ? 'READY' : 'WAITING'],
+                    ['Shield','Security analysis', security ? 'READY' : 'WAITING'],
+                  ].map(([k,label,status],i) => <View key={label} style={st.cognitiveRow}><ScanRing danger={false} /><Text style={st.cognitiveText}>{label}</Text><Text style={st.cognitiveStatus}>{status}</Text></View>)}
+                </View>
+              </View>
             </View>
-            <View style={st.quickRow}>
-              {['Show me all discovered network devices.', 'Is my Packet Tracer network healthy?', 'Which device is the core switch?'].map(q => <Pressable key={q} onPress={() => setPrompt(q)} style={st.quick}><Text style={st.quickText}>{q}</Text></Pressable>)}
-            </View>
-            {run && <View style={st.runCard}>
-              <View style={st.sectionRow}><Text style={st.runTitle}>{run.prompt}</Text><Pill text={run.status.toUpperCase()} good={run.status === 'completed'} /></View>
-              {run.events.map(e => <View key={e.id} style={st.event}><Icon name={e.kind === 'error' ? 'alert-triangle' : e.kind === 'tool' ? 'terminal' : 'circle'} size={14} color="#7DC3FF" /><View style={{ flex: 1 }}><Text style={st.eventTitle}>{e.title}</Text>{!!e.detail && <Text style={st.eventText}>{e.detail}</Text>}</View></View>)}
-              {!!run.answer && <View style={st.answer}><Text style={st.answerLabel}>NEXUS</Text><Text style={st.answerText}>{run.answer}</Text></View>}
+
+            {run && <View style={st.runConsole}>
+              <View style={st.runConsoleHead}>
+                <View><Text style={st.runOverline}>EXECUTION TRACE</Text><Text style={st.runTitleV2}>{run.prompt}</Text></View>
+                <Pill text={run.status.toUpperCase()} good={run.status === 'completed'} />
+              </View>
+              <View style={st.traceRail} />
+              {run.events.map((e,i) => <View key={e.id} style={st.traceRow}>
+                <View style={st.traceIcon}><Icon name={e.kind === 'error' ? 'alert-triangle' : e.kind === 'tool' ? 'cpu' : e.kind === 'success' ? 'check' : 'circle'} size={13} color={e.kind === 'error' ? '#FF8291' : '#78C8FF'} /></View>
+                <View style={{flex:1}}><View style={st.traceHead}><Text style={st.traceTitle}>{e.title}</Text><Text style={st.traceIndex}>0{i+1}</Text></View>{!!e.detail && <Text style={st.traceDetail}>{e.detail}</Text>}</View>
+              </View>)}
+              {run.status === 'thinking' && <View style={st.reasoningBar}><ThinkingDots /><Text style={st.reasoningText}>NEXUS is evaluating live network context…</Text></View>}
+              {!!run.answer && <LinearGradient colors={['#132944','#171A35']} style={st.answerV2}><Text style={st.answerLabel}>NEXUS RESPONSE</Text><Text style={st.answerTextV2}>{run.answer}</Text></LinearGradient>}
+              {!!run.error && <View style={st.errorPanel}><Icon name="alert-triangle" color="#FF8B98" /><View style={{flex:1}}><Text style={st.errorTitle}>Agent interrupted</Text><Text style={st.errorText}>{run.error}</Text></View></View>}
             </View>}
           </>}
 
@@ -311,6 +359,52 @@ const st = StyleSheet.create({
   aiStrip: { borderRadius: 17, borderWidth: 1, borderColor: '#463D6E', backgroundColor: '#18182A', padding: 17, flexDirection: 'row', alignItems: 'center', gap: 13 }, aiIcon: { width: 39, height: 39, borderRadius: 12, backgroundColor: '#282143', alignItems: 'center', justifyContent: 'center' }, aiTitle: { color: '#ECE8FF', fontWeight: '900', fontSize: 13 }, aiText: { color: '#958CAD', fontSize: 10, lineHeight: 16, marginTop: 4 },
   agentHero: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }, promptCard: { backgroundColor: '#101B2A', borderWidth: 1, borderColor: '#31506F', borderRadius: 16, flexDirection: 'row', alignItems: 'center', paddingLeft: 15 }, prompt: { flex: 1, minHeight: 58, maxHeight: 130, color: '#EEF6FF', fontSize: 13, paddingVertical: 13 }, send: { width: 38, height: 38, borderRadius: 11, backgroundColor: '#78BDFF', alignItems: 'center', justifyContent: 'center', marginRight: 10 }, quickRow: { gap: 8, marginTop: 12, marginBottom: 22 }, quick: { borderWidth: 1, borderColor: '#25384F', backgroundColor: '#0F1825', borderRadius: 12, padding: 12 }, quickText: { color: '#91A8C1', fontSize: 11 },
   runCard: { borderRadius: 19, borderWidth: 1, borderColor: '#263950', backgroundColor: '#101A28', padding: 18 }, runTitle: { color: '#EDF5FF', fontWeight: '800', fontSize: 13, flex: 1 }, event: { flexDirection: 'row', gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#1D2D41' }, eventTitle: { color: '#DDE9F8', fontSize: 11, fontWeight: '800' }, eventText: { color: '#7E91A8', fontSize: 10, lineHeight: 16, marginTop: 3 }, answer: { backgroundColor: '#13253A', borderRadius: 13, padding: 15, marginTop: 14 }, answerLabel: { color: '#79BDFF', fontSize: 9, fontWeight: '900', letterSpacing: 1.5 }, answerText: { color: '#D6E3F2', fontSize: 12, lineHeight: 20, marginTop: 8 },
+  agentCommand: { gap: 18, alignItems: 'stretch' },
+  agentLeft: { flex: 1, minWidth: 0 },
+  agentRight: { width: 310 },
+  agentHeroV2: { minHeight: 230, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#264664', backgroundColor: '#0D1A2B', borderRadius: 24, padding: 24, overflow: 'hidden' },
+  agentTitle: { color: '#F2F7FF', fontSize: 31, lineHeight: 39, fontWeight: '900', letterSpacing: -.7 },
+  agentAccent: { color: '#73C7FF' },
+  agentOrbWrap: { width: 165, alignItems: 'center', justifyContent: 'center' },
+  commandBox: { marginTop: 16, borderWidth: 1, borderColor: '#315675', backgroundColor: '#0A1522', borderRadius: 18, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10, shadowColor: '#53B9FF', shadowOpacity: .08, shadowRadius: 22 },
+  commandPrefix: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingLeft: 4 },
+  commandPrefixText: { color: '#6FCBFF', fontSize: 9, fontWeight: '900', letterSpacing: 1.1 },
+  commandInput: { flex: 1, minHeight: 50, maxHeight: 120, color: '#EEF7FF', fontSize: 12.5, lineHeight: 18, paddingVertical: 10 },
+  commandSend: { minWidth: 105, height: 42, borderRadius: 12, backgroundColor: '#7AC8FF', alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, paddingHorizontal: 14 },
+  commandSendText: { color: '#06111C', fontWeight: '900', fontSize: 10, letterSpacing: .8 },
+  suggestionGrid: { marginTop: 12, gap: 9 },
+  suggestionCard: { flexDirection: 'row', alignItems: 'center', gap: 11, borderWidth: 1, borderColor: '#223750', backgroundColor: '#0F1926', borderRadius: 15, padding: 13 },
+  suggestionIcon: { width: 35, height: 35, borderRadius: 11, backgroundColor: '#152C43', alignItems: 'center', justifyContent: 'center' },
+  suggestionTitle: { color: '#E7F1FD', fontSize: 11, fontWeight: '900' },
+  suggestionSub: { color: '#71849A', fontSize: 8.8, lineHeight: 13, marginTop: 3 },
+  cognitivePanel: { borderWidth: 1, borderColor: '#293E57', backgroundColor: '#101A28', borderRadius: 20, padding: 16, minHeight: 260 },
+  cognitiveHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  cognitiveLabel: { color: '#6D839E', fontSize: 8.5, fontWeight: '900', letterSpacing: 1.5 },
+  cognitiveModel: { flexDirection: 'row', alignItems: 'center', gap: 11, marginTop: 20 },
+  cognitiveModelName: { color: '#EAF4FF', fontSize: 12, fontWeight: '900' },
+  cognitiveModelMeta: { color: '#667C95', fontSize: 8.5, marginTop: 3 },
+  cognitiveRule: { height: 1, backgroundColor: '#1F3045', marginVertical: 16 },
+  cognitiveRow: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 8 },
+  cognitiveText: { flex: 1, color: '#A9BAD0', fontSize: 10 },
+  cognitiveStatus: { color: '#68DCC1', fontSize: 8, fontWeight: '900', letterSpacing: .7 },
+  runConsole: { marginTop: 18, borderWidth: 1, borderColor: '#2B405A', backgroundColor: '#0D1724', borderRadius: 20, padding: 18, overflow: 'hidden' },
+  runConsoleHead: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 },
+  runOverline: { color: '#74BFFF', fontSize: 8.5, fontWeight: '900', letterSpacing: 1.7, marginBottom: 6 },
+  runTitleV2: { color: '#EAF3FF', fontSize: 14, fontWeight: '900', maxWidth: 760 },
+  traceRail: { height: 1, backgroundColor: '#20334A', marginVertical: 16 },
+  traceRow: { flexDirection: 'row', gap: 11, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: '#182A3D' },
+  traceIcon: { width: 28, height: 28, borderRadius: 9, borderWidth: 1, borderColor: '#294866', backgroundColor: '#14263A', alignItems: 'center', justifyContent: 'center' },
+  traceHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
+  traceTitle: { color: '#DCEAF9', fontSize: 10.5, fontWeight: '900' },
+  traceIndex: { color: '#4E6782', fontSize: 8, fontWeight: '900' },
+  traceDetail: { color: '#778CA5', fontSize: 9.2, lineHeight: 14.5, marginTop: 4 },
+  reasoningBar: { flexDirection: 'row', alignItems: 'center', gap: 9, backgroundColor: '#122437', borderRadius: 12, padding: 12, marginTop: 12 },
+  reasoningText: { color: '#83A8C8', fontSize: 9.5 },
+  answerV2: { marginTop: 14, borderRadius: 15, padding: 16, borderWidth: 1, borderColor: '#345A7C' },
+  answerTextV2: { color: '#D9E9F8', fontSize: 11.5, lineHeight: 19, marginTop: 8 },
+  errorPanel: { marginTop: 12, flexDirection: 'row', gap: 10, alignItems: 'flex-start', borderWidth: 1, borderColor: '#6A3742', backgroundColor: '#25161B', borderRadius: 13, padding: 13 },
+  errorTitle: { color: '#FFD6DB', fontSize: 10.5, fontWeight: '900' },
+  errorText: { color: '#C59098', fontSize: 9.3, lineHeight: 14, marginTop: 4 },
   settingsCard: { backgroundColor: '#101A28', borderWidth: 1, borderColor: '#273950', borderRadius: 19, padding: 20, marginTop: 24, maxWidth: 650 }, fieldLabel: { color: '#DDE8F5', fontWeight: '800', fontSize: 11, marginTop: 10 }, field: { color: '#EAF3FF', backgroundColor: '#0A131E', borderWidth: 1, borderColor: '#2A3F58', borderRadius: 11, padding: 13, marginTop: 8, marginBottom: 12 }, connect: { backgroundColor: '#79BDFF', borderRadius: 11, padding: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 8 }, connectText: { color: '#06111C', fontWeight: '900', fontSize: 12 }, connection: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 15 }, connectionText: { color: '#8194AB', fontSize: 10 },
   topologyBoard: { marginTop: 22, borderRadius: 22, borderWidth: 1, borderColor: '#263A52', backgroundColor: '#0D1826', padding: 20, overflow: 'hidden' },
   topologyCoreRow: { flexDirection: 'row', gap: 12, justifyContent: 'center', flexWrap: 'wrap' },
