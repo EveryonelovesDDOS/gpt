@@ -45,6 +45,31 @@ function Metric({ label, value, icon }: { label: string; value: string | number;
   </View>;
 }
 
+function OperatorResponse({ text }: { text: string }) {
+  const labels = ['OBSERVED','INFERRED','RISK','NEXT CHECKS','CONFIDENCE'];
+  const sections: { label: string; body: string }[] = [];
+  let current = { label: 'NEXUS RESPONSE', body: '' };
+  for (const raw of text.split('\n')) {
+    const line = raw.trim();
+    const found = labels.find(label => line.toUpperCase().replace(/[:#*]/g,'').trim() === label);
+    if (found) {
+      if (current.body.trim()) sections.push(current);
+      current = { label: found, body: '' };
+    } else {
+      current.body += (current.body ? '\n' : '') + raw;
+    }
+  }
+  if (current.body.trim()) sections.push(current);
+  if (sections.length <= 1) return <Text style={st.answerTextV2}>{text}</Text>;
+  const icons: Record<string, IconName> = { OBSERVED:'eye', INFERRED:'git-merge', RISK:'alert-triangle', 'NEXT CHECKS':'check-square', CONFIDENCE:'target' };
+  return <View style={st.operatorGrid}>
+    {sections.map((section, index) => <View key={section.label + index} style={[st.operatorCard, section.label === 'RISK' && st.operatorRisk]}>
+      <View style={st.operatorHead}><View style={st.operatorIcon}><Icon name={icons[section.label] || 'cpu'} size={13} color={section.label === 'RISK' ? '#FF9A75' : '#75C9FF'} /></View><Text style={st.operatorLabel}>{section.label}</Text></View>
+      <Text style={st.operatorBody}>{section.body.trim()}</Text>
+    </View>)}
+  </View>;
+}
+
 function AppContent() {
   const { width } = useWindowDimensions();
   const desktop = width >= 900;
@@ -370,7 +395,7 @@ function AppContent() {
                 <View style={{flex:1}}><View style={st.traceHead}><Text style={st.traceTitle}>{e.title}</Text><Text style={st.traceIndex}>0{i+1}</Text></View>{!!e.detail && <Text style={st.traceDetail}>{e.detail}</Text>}</View>
               </View>)}
               {run.status === 'thinking' && <View style={st.reasoningBar}><ThinkingDots /><Text style={st.reasoningText}>NEXUS is evaluating live network context…</Text></View>}
-              {!!run.answer && <LinearGradient colors={['#132944','#171A35']} style={st.answerV2}><Text style={st.answerLabel}>NEXUS RESPONSE</Text><Text style={st.answerTextV2}>{run.answer}</Text></LinearGradient>}
+              {!!run.answer && <LinearGradient colors={['#132944','#171A35']} style={st.answerV2}><Text style={st.answerLabel}>NEXUS RESPONSE</Text><OperatorResponse text={run.answer} /></LinearGradient>}
               {!!run.error && <View style={st.errorPanel}><Icon name="alert-triangle" color="#FF8B98" /><View style={{flex:1}}><Text style={st.errorTitle}>Agent interrupted</Text><Text style={st.errorText}>{run.error}</Text></View></View>}
             </View>}
           </>}
