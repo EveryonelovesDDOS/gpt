@@ -102,6 +102,7 @@ export function createIncidentManager({ networkClient }) {
     if (!template) throw new Error('Unknown defensive action');
     const hosts = await networkClient.getHosts();
     const attacker = hosts.find(h => h.labThreatMarker);
+    if (kind === 'quarantine_attacker_port' && !attacker?.connectedInterface) throw new Error('Cannot prepare port quarantine because the controller did not report the attacker host interface');
     const commands = template.commands.map(line => line.replace('<ATTACKER_CONNECTED_INTERFACE>', attacker?.connectedInterface || '<unknown-interface>'));
     const rollback = template.rollback.map(line => line.replace('<ATTACKER_CONNECTED_INTERFACE>', attacker?.connectedInterface || '<unknown-interface>'));
     const proposal = {
