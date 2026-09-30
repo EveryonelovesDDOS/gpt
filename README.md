@@ -83,3 +83,39 @@ The five tools are `list_files`, `read_file`, `search_files`, `calculate`, and a
 | `examples/workspace/` | Optional sample documents |
 
 This is a local MVP. It has been typechecked, tested with mocked Ollama tool responses, and built for the web. A live model run and real-device visual QA require Ollama and a device on your machine.
+
+
+## NEXUS · Packet Tracer integration
+
+This branch can connect the local agent to Cisco Packet Tracer's Network Controller through Real World Access. The integration is read-only for now: the agent can inspect discovered devices and summarize reachability, but it does not push router, switch, ACL, or VLAN configuration changes.
+
+Your current lab mapping is:
+
+- `10.0.0.2` → `CORE-SW`
+- `10.0.0.1` → `EDGE-RTR`
+- Packet Tracer Controller REST API → `http://127.0.0.1:58000/api/v1`
+
+Before starting the server on Windows PowerShell, set the controller credentials for the current terminal session:
+
+```powershell
+$env:PT_CONTROLLER_USERNAME="<controller username>"
+$env:PT_CONTROLLER_PASSWORD="<controller password>"
+npm run server
+```
+
+Keep Packet Tracer open with **NEXUS-CTRL → Config → Controller → Access Enabled** and port `58000` listening.
+
+The NEXUS agent now has two additional tools:
+
+- `get_network_devices` — gets the current controller inventory.
+- `get_network_health` — counts reachable and unreachable discovered devices.
+
+Example prompts in the app:
+
+```text
+Show me every network device currently discovered.
+Is my Packet Tracer network healthy?
+Which discovered device is the core switch?
+```
+
+Packet Tracer's simulated devices can report fields such as `collectionStatus: Unsupported` even while `reachabilityStatus` is `Reachable`. NEXUS therefore treats reachability as the primary online/offline signal and preserves the collection status as a separate field.
