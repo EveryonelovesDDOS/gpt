@@ -243,26 +243,19 @@ function AppContent() {
           </>}
 
           {page === 'topology' && <>
-            <View style={st.sectionRow}><View><Text style={st.eyebrow}>LIVE NETWORK MAP</Text><Text style={st.sectionTitle}>Topology</Text></View><Pill text={topology ? 'LIVE GRAPH' : 'NO LIVE DATA'} good={!!topology} /></View>
-            <Text style={st.heroBody}>This view combines controller-discovered devices and hosts with the known lab backbone. Links marked inferred are derived from the current lab model when Packet Tracer does not expose a direct host attachment.</Text>
-            <View style={st.topologyBoard}>
-              <View style={st.topologyCoreRow}>
-                {(topology?.nodes || []).filter(n => n.kind === 'device').map(n => <View key={n.id} style={[st.topologyNode, n.role === 'edge-router' && st.topologyNodeEdge]}>
-                  <View style={st.topologyNodeIcon}><Icon name={n.role === 'edge-router' ? 'share-2' : 'layers'} color="#7BC3FF" size={20} /></View>
-                  <Text style={st.topologyNodeName}>{n.label}</Text><Text style={st.topologyNodeMeta}>{n.ip || n.zone}</Text>
-                </View>)}
-              </View>
-              <View style={st.topologyLine}><PulseRail vertical /></View>
-              <View style={st.hostGrid}>
-                {(topology?.nodes || []).filter(n => n.kind === 'host').map(n => <View key={n.id} style={[st.hostNode, n.role === 'attacker' && st.hostNodeThreat]}>
-                  <Icon name={n.role === 'attacker' ? 'alert-triangle' : 'monitor'} color={n.role === 'attacker' ? '#FF8D9A' : '#79BDFF'} size={17} />
-                  <Text style={st.hostName}>{n.label}</Text>
-                  <Text style={st.hostMeta}>{n.ip || 'No IP'} · {n.zone}</Text>
-                  {n.vlan ? <Text style={st.hostVlan}>VLAN {n.vlan}</Text> : null}
-                </View>)}
+            <View style={st.sectionRow}>
+              <View><Text style={st.eyebrow}>LIVE NETWORK MAP</Text><Text style={st.sectionTitle}>Topology intelligence</Text></View>
+              <View style={st.topologyActions}>
+                <Pressable onPress={() => setIncidentMode(x => !x)} style={[st.modeButton, incidentMode && st.modeButtonActive]}><Icon name={incidentMode ? 'x' : 'alert-triangle'} color={incidentMode ? '#FF9CAA' : '#86CFFF'} size={14} /><Text style={[st.modeButtonText, incidentMode && { color:'#FF9CAA' }]}>{incidentMode ? 'Exit incident mode' : 'Incident mode'}</Text></Pressable>
+                <Pill text={topology ? 'LIVE GRAPH' : 'NO LIVE DATA'} good={!!topology} />
               </View>
             </View>
-            <View style={st.legendCard}><Text style={st.legendTitle}>Link intelligence</Text>{(topology?.links || []).slice(0,12).map(l => <View key={l.id} style={st.linkRow}><View style={st.linkDot} /><Text style={st.linkText}>{l.label || 'Network link'}</Text><Text style={st.linkSource}>{l.sourceType}</Text></View>)}</View>
+            <Text style={st.heroBody}>Interactive nodes, animated traffic, VLAN context and threat focus. Incident mode highlights the simulated attacker path without presenting a lab marker as proof of compromise.</Text>
+            <View style={{ marginTop:18 }}><TopologyScene topology={topology} incidentMode={incidentMode} /></View>
+            <View style={st.legendCard}>
+              <View style={st.sectionRow}><Text style={st.legendTitle}>Link intelligence</Text><Text style={st.timestamp}>{topology?.links.length || 0} relationships</Text></View>
+              {(topology?.links || []).slice(0,12).map(l => <View key={l.id} style={st.linkRow}><View style={st.linkDot} /><Text style={st.linkText}>{l.label || 'Network link'}</Text><Text style={st.linkSource}>{l.sourceType}</Text></View>)}
+            </View>
           </>}
 
           {page === 'security' && <>
