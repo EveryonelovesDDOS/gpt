@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { createAgent } from './agent.mjs';
 import { createPacketTracerClient } from './packetTracer.mjs';
 import { createIncidentManager } from './incidents.mjs';
+import { createTelemetryManager } from './telemetry.mjs';
 import { listFiles, readDocument } from './tools.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -40,6 +41,7 @@ export function createServer({
   const networkClient = createPacketTracerClient({ fetcher });
   const agent = createAgent({ root: workspace, model, ollama, fetcher, networkClient });
   const incidents = createIncidentManager({ networkClient });
+  const telemetry = createTelemetryManager({ networkClient });
   const server = http.createServer(async (req, res) => {
     const origin = req.headers.origin;
     if (origin && !localOrigin(origin)) return json(res, 403, { error: '此来源不允许访问本地服务' });
@@ -80,8 +82,24 @@ export function createServer({
       if (url.pathname === '/api/network/topology' && req.method === 'GET') return json(res, 200, await networkClient.getTopology(), origin);
       if (url.pathname === '/api/network/security' && req.method === 'GET') return json(res, 200, await networkClient.getSecurityAnalysis(), origin);
       if (url.pathname === '/api/incidents' && req.method === 'GET') return json(res, 200, await incidents.getTimeline(), origin);
+      if (url.pathname === '/api/incidents/cases' && req.method === 'GET') return json(res, 200, { cases: incidents.listCases() }, origin);
+      const openIncidentMatch = url.pathname.match(/^\/api\/incidents\/([^/]+)\/open$/);
+      if (openIncidentMatch && req.method === 'POST') return json(res, 201, await incidents.openCase(decodeURIComponent(openIncidentMatch[1])), origin);
+      const incidentCaseMatch = url.pathname.match(/^\/api\/incidents\/cases\/([\da-f-]+)(?:\/(close))?$/);
+      if (incidentCaseMatch) {
+        const [, id, action] = incidentCaseMatch;
+        if (!action && req.method === 'GET') {
+          const incidentCase = incidents.getCase(id);
+          return json(res, incidentCase ? 200 : 404, incidentCase || { error:'Incident case not found' }, origin);
+        }
+        if (action === 'close' && req.method === 'POST') return json(res, 200, incidents.closeCase(id), origin);
+      }
+      if (url.pathname === '/api/network/changes' && req.method === 'GET') return json(res, 200, await telemetry.sample(), origin);
       if (url.pathname === '/api/actions' && req.method === 'GET') return json(res, 200, { proposals: incidents.listProposals() }, origin);
-      if (url.pathname === '/api/actions/propose' && req.method === 'POST') { const { kind } = await body(req); return json(res, 201, await incidents.propose(kind), origin); }
+      if (url.pathname === '/api/actions/propose' && req.method === 'POST') {
+        const { kind, incidentCaseId } = await body(req);
+        return json(res, 201, await incidents.propose(kind, incidentCaseId || ''), origin);
+      }
       const actionMatch = url.pathname.match(/^\/api\/actions\/([\da-f-]+)\/decision$/);
       if (actionMatch && req.method === 'POST') { const { approved } = await body(req); if (typeof approved !== 'boolean') throw new Error('Approval must be boolean'); return json(res, 200, incidents.decide(actionMatch[1], approved), origin); }
       if (url.pathname === '/api/files' && req.method === 'GET') {
