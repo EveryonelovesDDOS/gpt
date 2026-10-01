@@ -11,6 +11,10 @@ export const definitions = [
   { type: 'function', function: { name: 'get_network_hosts', description: 'Read endpoint hosts discovered by the Packet Tracer controller, including IP, MAC, connected interface, VLAN-derived zone and trust classification.', parameters: { type: 'object', properties: {} } } },
   { type: 'function', function: { name: 'get_network_topology', description: 'Build a topology view from controller-discovered devices and hosts plus known lab backbone relationships.', parameters: { type: 'object', properties: {} } } },
   { type: 'function', function: { name: 'get_security_analysis', description: 'Run defensive lab security analysis using reachability, VLAN segmentation, and lab threat markers. This does not claim IDS certainty.', parameters: { type: 'object', properties: {} } } },
+  { type: 'function', function: { name: 'get_network_digital_twin', description: 'Build the current NEXUS digital twin: infrastructure, endpoints, trust zones, relationships, certainty labels, policy expectations, and security summary.', parameters: { type: 'object', properties: {} } } },
+  { type: 'function', function: { name: 'analyze_network_path', description: 'Analyze the relationship path between two assets in the current digital twin. This explicitly distinguishes graph adjacency from verified IP reachability.', parameters: { type: 'object', properties: { source: { type:'string' }, target:{ type:'string' } }, required:['source','target'] } } },
+  { type: 'function', function: { name: 'get_blast_radius', description: 'Estimate graph-adjacent assets that depend on or connect through an asset. This is dependency/adjoining context, not proof of compromise propagation.', parameters: { type: 'object', properties: { asset:{ type:'string' }, depth:{ type:'number' } }, required:['asset'] } } },
+  { type: 'function', function: { name: 'get_connected_assets', description: 'List the assets directly connected to a named device or host in the current digital twin, with evidence certainty.', parameters: { type:'object', properties:{ asset:{type:'string'} }, required:['asset'] } } },
   { type: 'function', function: { name: 'write_file', description: 'Create or update one .md or .txt document in the local workspace. Requires user approval.', parameters: { type: 'object', properties: { path: { type: 'string' }, content: { type: 'string' } }, required: ['path', 'content'] } } },
 ];
 
@@ -60,7 +64,7 @@ export function calculate(expression) {
   if (i !== tokens.length || !Number.isFinite(result)) throw new Error('表达式无效');
   return String(Number(result.toPrecision(12)));
 }
-export async function executeTool(root, name, args, { networkClient } = {}) {
+export async function executeTool(root, name, args, { networkClient, digitalTwin } = {}) {
   if (!toolNames.has(name) || !args || typeof args !== 'object' || Array.isArray(args)) throw new Error('未知工具或参数');
   switch (name) {
     case 'list_files': return JSON.stringify(await listFiles(root));
@@ -91,6 +95,18 @@ export async function executeTool(root, name, args, { networkClient } = {}) {
     case 'get_security_analysis':
       if (!networkClient) throw new Error('Packet Tracer integration is unavailable');
       return JSON.stringify(await networkClient.getSecurityAnalysis());
+    case 'get_network_digital_twin':
+      if (!digitalTwin) throw new Error('NEXUS digital twin is unavailable');
+      return JSON.stringify(await digitalTwin.build());
+    case 'analyze_network_path':
+      if (!digitalTwin) throw new Error('NEXUS digital twin is unavailable');
+      return JSON.stringify(await digitalTwin.path(args.source, args.target));
+    case 'get_blast_radius':
+      if (!digitalTwin) throw new Error('NEXUS digital twin is unavailable');
+      return JSON.stringify(await digitalTwin.blastRadius(args.asset, Math.max(1, Math.min(6, Number(args.depth || 3)))));
+    case 'get_connected_assets':
+      if (!digitalTwin) throw new Error('NEXUS digital twin is unavailable');
+      return JSON.stringify(await digitalTwin.connectedTo(args.asset));
     case 'write_file': return await writeDocument(root, args.path, args.content);
   }
 }
