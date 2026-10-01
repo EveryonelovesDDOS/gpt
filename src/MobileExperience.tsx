@@ -1,10 +1,10 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ContinuousDataFlow, PulseHalo, Reveal } from './AuroraMotion';
-import type { AgentRun, DefensiveAction, Health, IncidentTimeline, NetworkHealth, NetworkTopology, SecurityAnalysis } from './types';
+import type { AgentRun, DefensiveAction, Health, IncidentCase, IncidentTimeline, NetworkHealth, NetworkTopology, SecurityAnalysis, TelemetryChange } from './types';
 
 export type MobilePage = 'home' | 'dashboard' | 'topology' | 'security' | 'agent' | 'settings';
 
@@ -18,6 +18,8 @@ type Props = {
   incidents: IncidentTimeline | null;
   serverHealth: Health | null;
   actions: DefensiveAction[];
+  incidentCases: IncidentCase[];
+  changes: TelemetryChange[];
   incidentMode: boolean;
   setIncidentMode: (value: boolean) => void;
   busy: boolean;
@@ -31,8 +33,10 @@ type Props = {
   onConnect: () => void;
   onRefresh: () => void;
   onSubmit: () => void;
-  onCreatePlan: (kind: string) => void;
+  onCreatePlan: (kind: string, incidentCaseId?: string) => void;
   onDecidePlan: (id: string, approved: boolean) => void;
+  onOpenIncident: (alertId: string) => void;
+  onCloseIncident: (caseId: string) => void;
   notice: string;
   clearNotice: () => void;
 };
@@ -61,6 +65,46 @@ const C = {
 
 function Icon({name,size=18,color=C.ink}:{name:IconName;size?:number;color?:string}) {
   return <Feather name={name} size={size} color={color}/>;
+}
+
+function cleanMarkup(text:string) {
+  return String(text || '')
+    .replace(/^#{1,6}\\s*/gm,'')
+    .replace(/\\*\\*(.*?)\\*\\*/g,'$1')
+    .replace(/__(.*?)__/g,'$1')
+    .replace(/`([^`]+)`/g,'$1')
+    .trim();
+}
+
+function operatorSections(text:string) {
+  const labels=['OBSERVED','INFERRED','RISK','NEXT CHECKS','CONFIDENCE'];
+  const sections:{label:string;body:string}[]=[];
+  let current={label:'NEXUS RESPONSE',body:''};
+  for(const raw of String(text||'').split('\\n')){
+    const candidate=raw.trim().toUpperCase().replace(/[:#*]/g,'').trim();
+    const label=labels.find(x=>x===candidate);
+    if(label){
+      if(current.body.trim()) sections.push({...current,body:cleanMarkup(current.body)});
+      current={label,body:''};
+    } else current.body += (current.body?'\\n':'') + raw;
+  }
+  if(current.body.trim()) sections.push({...current,body:cleanMarkup(current.body)});
+  return sections;
+}
+
+function changeColor(severity:string) {
+  return severity==='critical'||severity==='high'?C.coral:severity==='medium'||severity==='warning'?C.amber:C.mint;
+}
+
+function ChangeCard({change}:{change:TelemetryChange}) {
+  const color=changeColor(change.severity);
+  return <View style={s.changeCard}>
+    <View style={[s.changeIcon,{backgroundColor:color+'16'}]}><Icon name={change.type.includes('resolved')?'check-circle':change.type.includes('host')?'monitor':'activity'} size={16} color={color}/></View>
+    <View style={{flex:1}}>
+      <View style={s.changeHead}><Text style={s.changeTitle}>{change.title}</Text><Text style={s.changeTime}>{new Date(change.at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</Text></View>
+      <Text style={s.changeDetail}>{change.detail}</Text>
+    </View>
+  </View>;
 }
 
 function SoftButton({icon,label,onPress,tone='dark'}:{icon:IconName;label:string;onPress:()=>void;tone?:'dark'|'mint'|'light'}) {
