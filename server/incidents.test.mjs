@@ -91,3 +91,29 @@ test('incident workspace correlates evidence and safe response options', async (
   const closed = manager.closeCase(incidentCase.id);
   assert.equal(closed.status, 'closed');
 });
+
+
+test('verified action loop keeps execution human-controlled and checks live evidence', async () => {
+  const manager = createIncidentManager({ networkClient });
+  const proposal = await manager.propose('quarantine_attacker_port');
+  const approved = manager.decide(proposal.id, true);
+  assert.equal(approved.status, 'approved-preview');
+  assert.equal(approved.lifecycle.some(x => x.step === 'approved'), true);
+
+  const simulated = await manager.simulate(proposal.id);
+  assert.equal(simulated.status, 'simulated');
+  assert.equal(simulated.simulation.result, 'safe-preview');
+  assert.match(simulated.simulation.limitation, /does not emulate/i);
+
+  const applied = manager.markApplied(proposal.id);
+  assert.equal(applied.status, 'verification-pending');
+  assert.equal(applied.lifecycle.some(x => x.step === 'manual-apply'), true);
+
+  const verified = await manager.verify(proposal.id);
+  assert.equal(verified.status, 'verification-failed');
+  assert.match(verified.verification.detail, /still visible/i);
+
+  const rollback = manager.requestRollback(proposal.id);
+  assert.equal(rollback.rollbackState, 'operator-required');
+  assert.equal(rollback.lifecycle.some(x => x.step === 'rollback-ready'), true);
+});
