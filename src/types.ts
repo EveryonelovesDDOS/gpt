@@ -206,3 +206,45 @@ export type BlastRadius = {
   reason?:string;
   generatedAt:string;
 };
+
+
+export type DemoScenarioStage = {
+  id:string;
+  order:number;
+  title:string;
+  kicker:string;
+  page:string;
+  tone:string;
+  state:'complete'|'active'|'ready'|'upcoming';
+};
+
+export type DemoScenario = {
+  enabled:boolean;
+  mode:string;
+  scenarioId:string;
+  title:string;
+  description:string;
+  startedAt:string|null;
+  completedAt:string|null;
+  current:{
+    id:string;
+    order:number;
+    title:string;
+    kicker:string;
+    summary:string;
+    page:string;
+    tone:string;
+    evidence:string[];
+    progress:number;
+    relationshipPath:string[];
+    highlightedAssets:string[];
+    recommendation:{ title:string; target:string; mode:string; rollbackReady:boolean }|null;
+    verification:{ result:string; label:string; detail:string }|null;
+  };
+  stageIndex:number;
+  stageCount:number;
+  stages:DemoScenarioStage[];
+  events:{ id:string; at:string; kind:string; title:string; detail:string }[];
+  guardrails:string[];
+  generatedAt:string;
+};
