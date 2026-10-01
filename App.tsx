@@ -10,8 +10,8 @@ import { AnimatedTabs, ContinuousDataFlow, DayBackdrop, PageTransition, PulseHal
 import { TopologyScene } from './src/TopologyScene';
 import { HomePage } from './src/HomePage';
 import { MobileExperience } from './src/MobileExperience';
-import { AgentRun, DefensiveAction, Health, IncidentTimeline, NetworkHealth, NetworkTopology, SecurityAnalysis } from './src/types';
-import { checkHealth, decideAction, defaultEndpoint, getActions, getIncidents, getNetworkHealth, getNetworkTopology, getRun, getSecurityAnalysis, proposeAction, startRun } from './src/api';
+import { AgentRun, DefensiveAction, Health, IncidentCase, IncidentTimeline, NetworkHealth, NetworkTopology, SecurityAnalysis, TelemetryChange } from './src/types';
+import { checkHealth, closeIncident, decideAction, defaultEndpoint, getActions, getIncidents, getNetworkHealth, getNetworkTopology, getRun, getSecurityAnalysis, getTelemetryChanges, openIncident, proposeAction, startRun } from './src/api';
 
 type Page = 'home' | 'dashboard' | 'topology' | 'security' | 'agent' | 'settings';
 type IconName = keyof typeof Feather.glyphMap;
@@ -116,6 +116,8 @@ function AppContent() {
   const [security,setSecurity] = useState<SecurityAnalysis|null>(null);
   const [incidents,setIncidents] = useState<IncidentTimeline|null>(null);
   const [actions,setActions] = useState<DefensiveAction[]>([]);
+  const [incidentCases,setIncidentCases] = useState<IncidentCase[]>([]);
+  const [changes,setChanges] = useState<TelemetryChange[]>([]);
   const [incidentMode,setIncidentMode] = useState(false);
   const [connected,setConnected] = useState(false);
   const [notice,setNotice] = useState('');
@@ -139,8 +141,11 @@ function AppContent() {
         getSecurityAnalysis(endpoint,pair),
         getIncidents(endpoint,pair),
         getActions(endpoint,pair),
-      ]).then(([n,t,sec,inc,act])=>{
+        getTelemetryChanges(endpoint,pair),
+      ]).then(([n,t,sec,inc,act,telemetry])=>{
         setNetwork(n); setTopology(t); setSecurity(sec); setIncidents(inc); setActions(act.proposals);
+        setIncidentCases(inc.cases || []);
+        setChanges(telemetry.changes || []);
       }).catch(()=>{});
     },4000);
     return ()=>clearInterval(timer);
@@ -177,14 +182,16 @@ function AppContent() {
       const base = editEndpoint.trim().replace(/\/$/,'');
       const token = editPair.trim();
       const h = await checkHealth(base);
-      const [n,t,sec,inc,act] = await Promise.all([
+      const [n,t,sec,inc,act,telemetry] = await Promise.all([
         getNetworkHealth(base,token),
         getNetworkTopology(base,token),
         getSecurityAnalysis(base,token),
         getIncidents(base,token),
         getActions(base,token),
+        getTelemetryChanges(base,token),
       ]);
-      setEndpoint(base); setPair(token); setServerHealth(h); setNetwork(n); setTopology(t); setSecurity(sec); setIncidents(inc); setActions(act.proposals); setConnected(true);
+      setEndpoint(base); setPair(token); setServerHealth(h); setNetwork(n); setTopology(t); setSecurity(sec); setIncidents(inc); setActions(act.proposals);
+      setIncidentCases(inc.cases || []); setChanges(telemetry.changes || []); setConnected(true);
       await AsyncStorage.multiSet([['@nexus/endpoint',base],['@nexus/pair',token]]);
       setNotice('Live Packet Tracer telemetry connected.');
       setPage('dashboard');
@@ -199,9 +206,9 @@ function AppContent() {
     setBusy(true);
     try {
       const [n,t,sec,inc,act] = await Promise.all([
-        getNetworkHealth(endpoint,pair),getNetworkTopology(endpoint,pair),getSecurityAnalysis(endpoint,pair),getIncidents(endpoint,pair),getActions(endpoint,pair)
+        getNetworkHealth(endpoint,pair),getNetworkTopology(endpoint,pair),getSecurityAnalysis(endpoint,pair),getIncidents(endpoint,pair),getActions(endpoint,pair),getTelemetryChanges(endpoint,pair)
       ]);
-      setNetwork(n); setTopology(t); setSecurity(sec); setIncidents(inc); setActions(act.proposals);
+      setNetwork(n); setTopology(t); setSecurity(sec); setIncidents(inc); setActions(act.proposals); setIncidentCases(inc.cases || []); setChanges(telemetry.changes || []);
     } catch(e) { setNotice(e instanceof Error ? e.message : 'Refresh failed'); }
     finally { setBusy(false); }
   }
@@ -215,14 +222,37 @@ function AppContent() {
     finally { setBusy(false); }
   }
 
-  async function createPlan(kind:string) {
+  async function createPlan(kind:string, incidentCaseId = '') {
     if (!connected) { setPage('settings'); setNotice('Connect NEXUS first.'); return; }
     setBusy(true);
     try {
-      const proposal = await proposeAction(endpoint,pair,kind);
+      const proposal = await proposeAction(endpoint,pair,kind,incidentCaseId);
       setActions(prev=>[proposal,...prev.filter(x=>x.id!==proposal.id)]);
       setNotice('Defensive plan generated. Review before approval.');
     } catch(e) { setNotice(e instanceof Error ? e.message : 'Unable to create plan'); }
+    finally { setBusy(false); }
+  }
+
+  async function investigateIncident(alertId:string) {
+    if (!connected) { setPage('settings'); setNotice('Connect NEXUS first.'); return; }
+    setBusy(true); setNotice('');
+    try {
+      const incidentCase = await openIncident(endpoint,pair,alertId);
+      setIncidentCases(prev=>[incidentCase,...prev.filter(x=>x.id!==incidentCase.id)]);
+      setIncidentMode(true);
+      setPage('security');
+      setNotice('Incident workspace opened with live evidence and a verification path.');
+    } catch(e) { setNotice(e instanceof Error ? e.message : 'Unable to open incident'); }
+    finally { setBusy(false); }
+  }
+
+  async function finishIncident(caseId:string) {
+    setBusy(true);
+    try {
+      const updated = await closeIncident(endpoint,pair,caseId);
+      setIncidentCases(prev=>prev.map(x=>x.id===caseId?updated:x));
+      setNotice('Incident case closed. No network configuration was changed.');
+    } catch(e) { setNotice(e instanceof Error ? e.message : 'Unable to close incident'); }
     finally { setBusy(false); }
   }
 
@@ -247,6 +277,8 @@ function AppContent() {
       incidents={incidents}
       serverHealth={serverHealth}
       actions={actions}
+      incidentCases={incidentCases}
+      changes={changes}
       incidentMode={incidentMode}
       setIncidentMode={setIncidentMode}
       busy={busy}
@@ -262,6 +294,8 @@ function AppContent() {
       onSubmit={submit}
       onCreatePlan={createPlan}
       onDecidePlan={decidePlan}
+      onOpenIncident={investigateIncident}
+      onCloseIncident={finishIncident}
       notice={notice}
       clearNotice={()=>setNotice('')}
     />;
@@ -270,7 +304,7 @@ function AppContent() {
   const header = <View style={s.header}>
     <View style={s.brand}>
       <LinearGradient colors={[P.mint,P.lilac]} start={{x:0,y:0}} end={{x:1,y:1}} style={s.logo}><Text style={s.logoText}>N</Text></LinearGradient>
-      <View><Text style={s.brandName}>NEXUS</Text><Text style={s.brandSub}>V8 · MOBILE PRODUCT · NETWORK STUDIO</Text></View>
+      <View><Text style={s.brandName}>NEXUS</Text><Text style={s.brandSub}>V9 · AGENTIC INCIDENT · NETWORK STUDIO</Text></View>
     </View>
     {desktop && <AnimatedTabs items={nav} activeId={page} onSelect={(id)=>setPage(id as Page)} width={94} />}
     <View style={s.headerRight}>
