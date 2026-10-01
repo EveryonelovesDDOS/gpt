@@ -42,8 +42,8 @@ export function createServer({
   const networkClient = createPacketTracerClient({ fetcher });
   const digitalTwin = createDigitalTwin({ networkClient });
   const agent = createAgent({ root: workspace, model, ollama, fetcher, networkClient, digitalTwin });
-  const incidents = createIncidentManager({ networkClient, digitalTwin });
   const telemetry = createTelemetryManager({ networkClient });
+  const incidents = createIncidentManager({ networkClient, digitalTwin, telemetry });
   const server = http.createServer(async (req, res) => {
     const origin = req.headers.origin;
     if (origin && !localOrigin(origin)) return json(res, 403, { error: '此来源不允许访问本地服务' });
