@@ -291,30 +291,106 @@ function Fabric({topology,incidentMode,setIncidentMode}:{topology:NetworkTopolog
   </View>;
 }
 
-function Defend({security,incidents,actions,onCreatePlan,onDecidePlan}:{security:SecurityAnalysis|null;incidents:IncidentTimeline|null;actions:DefensiveAction[];onCreatePlan:(kind:string)=>void;onDecidePlan:(id:string,approved:boolean)=>void}) {
+function IncidentWorkspace({incidentCase,onCreatePlan,onClose}:{incidentCase:IncidentCase;onCreatePlan:(kind:string,caseId?:string)=>void;onClose:(caseId:string)=>void}) {
+  return <View style={s.incidentWorkspace}>
+    <View style={s.caseHead}>
+      <View style={{flex:1}}>
+        <Text style={s.caseKicker}>ACTIVE INCIDENT · {incidentCase.severity.toUpperCase()}</Text>
+        <Text style={s.caseTitle}>{incidentCase.title}</Text>
+      </View>
+      <View style={s.caseLive}><View style={s.caseLiveDot}/><Text style={s.caseLiveText}>{incidentCase.status.toUpperCase()}</Text></View>
+    </View>
+    <Text style={s.caseAssessment}>{incidentCase.assessment}</Text>
+
+    <Text style={s.microLabel}>EVIDENCE</Text>
+    <View style={s.evidenceList}>
+      {incidentCase.evidence.map((item,i)=><View key={item.label+i} style={s.evidenceRow}>
+        <View style={s.evidenceRail}>
+          <View style={[s.evidenceDot,{backgroundColor:item.certainty==='observed'?C.mint:item.certainty==='heuristic'?C.violet:C.faint}]}/>
+          {i<incidentCase.evidence.length-1&&<View style={s.evidenceStem}/>}
+        </View>
+        <View style={{flex:1}}>
+          <Text style={s.evidenceLabel}>{item.label}</Text>
+          <Text style={s.evidenceValue}>{item.value}</Text>
+          <Text style={s.evidenceSource}>{item.source} · {item.certainty}</Text>
+        </View>
+      </View>)}
+    </View>
+
+    <Text style={s.microLabel}>VERIFICATION PATH</Text>
+    <View style={s.pathRow}>
+      {incidentCase.path.map((step,i)=><React.Fragment key={step.label+i}>
+        <View style={s.pathNode}>
+          <View style={[s.pathIcon,{backgroundColor:step.kind==='source'?C.coralSoft:step.kind==='fabric'?C.mintSoft:C.violetSoft}]}>
+            <Icon name={step.kind==='source'?'alert-triangle':step.kind==='fabric'?'cpu':'shield'} size={14} color={step.kind==='source'?C.coral:step.kind==='fabric'?C.mint:C.violet}/>
+          </View>
+          <Text style={s.pathLabel}>{step.label}</Text>
+          <Text style={s.pathCert}>{step.certainty}</Text>
+        </View>
+        {i<incidentCase.path.length-1&&<Icon name="arrow-right" size={13} color={C.faint}/>}
+      </React.Fragment>)}
+    </View>
+
+    <Text style={s.microLabel}>SAFE NEXT ACTIONS</Text>
+    <View style={s.recommendations}>
+      {incidentCase.recommendations.map(rec=><Pressable key={rec.kind} onPress={()=>onCreatePlan(rec.kind,incidentCase.id)} style={s.recommendation}>
+        <View style={s.recommendNumber}><Text style={s.recommendNumberText}>{rec.priority}</Text></View>
+        <Text style={s.recommendText}>{rec.label}</Text>
+        <Icon name="arrow-up-right" size={14} color={C.violet}/>
+      </Pressable>)}
+    </View>
+
+    {incidentCase.status!=='closed'&&<Pressable onPress={()=>onClose(incidentCase.id)} style={s.closeCaseButton}>
+      <Icon name="check-circle" size={15} color={C.mint}/><Text style={s.closeCaseText}>Close investigation</Text>
+    </Pressable>}
+  </View>;
+}
+
+function Defend({security,incidentCases,actions,onCreatePlan,onDecidePlan,onOpenIncident,onCloseIncident}:{security:SecurityAnalysis|null;incidentCases:IncidentCase[];actions:DefensiveAction[];onCreatePlan:(kind:string,caseId?:string)=>void;onDecidePlan:(id:string,approved:boolean)=>void;onOpenIncident:(alertId:string)=>void;onCloseIncident:(caseId:string)=>void}) {
   const posture=security?.posture||'normal';
   const color=posture==='critical'?C.coral:posture==='warning'?C.amber:C.mint;
+  const activeCase=incidentCases.find(item=>item.status!=='closed')||incidentCases[0];
+
   return <View style={s.page}>
     <SectionHead eyebrow="DEFEND" title="Security posture"/>
     <LinearGradient colors={posture==='critical'?['#3A1720','#6C2638']:posture==='warning'?['#2E2414','#5E4720']:['#0F3329','#16644E']} style={s.postureCard}>
-      <Text style={s.postureKicker}>CURRENT POSTURE</Text><Text style={s.postureTitle}>{posture.toUpperCase()}</Text><Text style={s.postureCopy}>{security?.alertCount||0} active alerts · {security?.criticalCount||0} critical · {security?.hostCount||0} observed hosts</Text>
+      <Text style={s.postureKicker}>CURRENT POSTURE</Text>
+      <Text style={s.postureTitle}>{posture.toUpperCase()}</Text>
+      <Text style={s.postureCopy}>{security?.alertCount||0} active alerts · {security?.criticalCount||0} critical · {security?.hostCount||0} observed hosts</Text>
       <View style={[s.postureDot,{backgroundColor:color}]}/>
     </LinearGradient>
+
+    {activeCase&&<>
+      <SectionHead eyebrow="INCIDENT WORKSPACE" title={activeCase.status==='closed'?'Latest investigation':'Investigation in progress'}/>
+      <IncidentWorkspace incidentCase={activeCase} onCreatePlan={onCreatePlan} onClose={onCloseIncident}/>
+    </>}
 
     <SectionHead eyebrow="DETECTION FEED" title="Active signals"/>
     <View style={s.card}>
       {(security?.alerts||[]).length ? security!.alerts.map((a,i)=><View key={a.id} style={[s.alertRow,i<(security?.alerts.length||0)-1&&s.rowDivider]}>
-        <View style={[s.alertIcon,{backgroundColor:a.severity==='critical'?C.coralSoft:C.amberSoft}]}><Icon name={a.severity==='critical'?'alert-octagon':'alert-triangle'} size={17} color={a.severity==='critical'?C.coral:C.amber}/></View>
-        <View style={{flex:1}}><View style={s.alertTitleRow}><Text style={s.alertTitle}>{a.title}</Text><Text style={[s.alertSeverity,{color:a.severity==='critical'?C.coral:C.amber}]}>{a.severity.toUpperCase()}</Text></View><Text style={s.alertDetail}>{a.detail}</Text></View>
+        <View style={[s.alertIcon,{backgroundColor:a.severity==='critical'?C.coralSoft:C.amberSoft}]}>
+          <Icon name={a.severity==='critical'?'alert-octagon':'alert-triangle'} size={17} color={a.severity==='critical'?C.coral:C.amber}/>
+        </View>
+        <View style={{flex:1}}>
+          <View style={s.alertTitleRow}><Text style={s.alertTitle}>{a.title}</Text><Text style={[s.alertSeverity,{color:a.severity==='critical'?C.coral:C.amber}]}>{a.severity.toUpperCase()}</Text></View>
+          <Text style={s.alertDetail}>{a.detail}</Text>
+          <Pressable onPress={()=>onOpenIncident(a.id)} style={s.investigateButton}>
+            <Icon name="search" size={13} color={C.violet}/><Text style={s.investigateText}>Investigate with NEXUS</Text>
+          </Pressable>
+        </View>
       </View>) : <View style={s.emptyState}><Icon name="shield" size={26} color={C.mint}/><Text style={s.emptyTitle}>Detection feed is quiet</Text><Text style={s.emptyText}>No active NEXUS heuristic matched.</Text></View>}
     </View>
 
-    <SectionHead eyebrow="RESPONSE" title="Quick containment"/>
-    <View style={s.responseGrid}>
-      {[['shield','Isolate guest','isolate_guest_from_server'],['slash','Quarantine port','quarantine_attacker_port'],['lock','Protect mgmt','protect_management']].map(([icon,label,kind])=><Pressable key={kind} onPress={()=>onCreatePlan(kind)} style={s.responseButton}><View style={s.responseButtonIcon}><Icon name={icon as IconName} size={16} color={C.violet}/></View><Text style={s.responseButtonText}>{label}</Text><Icon name="plus" size={14} color={C.faint}/></Pressable>)}
-    </View>
-
-    {actions.slice(0,2).map(a=><View key={a.id} style={s.planCard}><View style={s.planTop}><View style={{flex:1}}><Text style={s.planKicker}>{a.risk.toUpperCase()} RISK</Text><Text style={s.planTitle}>{a.title}</Text></View><Text style={s.planStatus}>{a.status.toUpperCase()}</Text></View><Text style={s.planSummary}>{a.summary}</Text>{a.status==='pending'&&<View style={s.planActions}><Pressable onPress={()=>onDecidePlan(a.id,false)} style={s.planReject}><Text style={s.planRejectText}>Reject</Text></Pressable><Pressable onPress={()=>onDecidePlan(a.id,true)} style={s.planApprove}><Text style={s.planApproveText}>Approve preview</Text></Pressable></View>}</View>)}
+    <SectionHead eyebrow="RESPONSE PLANS" title="Human-approved actions"/>
+    {actions.length ? <View style={s.planList}>
+      {actions.slice(0,3).map(a=><View key={a.id} style={s.planCard}>
+        <View style={s.planTop}><View style={{flex:1}}><Text style={s.planKicker}>{a.risk.toUpperCase()} RISK · PREVIEW ONLY</Text><Text style={s.planTitle}>{a.title}</Text></View><Text style={s.planStatus}>{a.status.toUpperCase()}</Text></View>
+        <Text style={s.planSummary}>{a.summary}</Text>
+        <View style={s.codePreview}>{a.commands.slice(0,3).map((line,i)=><Text key={i} style={s.codeLine}>{line}</Text>)}</View>
+        <Text style={s.rollbackLabel}>ROLLBACK READY · {a.rollback.length} command(s)</Text>
+        {a.status==='pending'&&<View style={s.planActions}><Pressable onPress={()=>onDecidePlan(a.id,false)} style={s.planReject}><Text style={s.planRejectText}>Reject</Text></Pressable><Pressable onPress={()=>onDecidePlan(a.id,true)} style={s.planApprove}><Text style={s.planApproveText}>Approve preview</Text></Pressable></View>}
+      </View>)}
+    </View> : <View style={s.emptyState}><Icon name="check-square" size={24} color={C.violet}/><Text style={s.emptyTitle}>No response plan yet</Text><Text style={s.emptyText}>Open an incident and choose a safe next action to generate one.</Text></View>}
   </View>;
 }
 
