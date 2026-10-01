@@ -8,6 +8,7 @@ export type AgentRun = {
   events: AgentEvent[];
   evidence?: AgentEvidence[];
   answer?: string;
+  followUps?: string[];
   error?: string;
   pending?: { name: string; path: string; preview: string } | null;
 };
@@ -95,10 +96,25 @@ export type IncidentTimeline = {
   generatedAt: string;
 };
 
+export type ActionLifecycleEvent = { at:string; step:string; detail:string };
 export type DefensiveAction = {
   id: string; kind: string; incidentCaseId?: string | null; title: string; target: string; summary: string;
   commands: string[]; rollback: string[]; risk: string; requiresApproval: boolean; executionMode: string;
   status: string; createdAt: string; decidedAt?: string; approved?: boolean; note: string;
+  lifecycle?: ActionLifecycleEvent[];
+  simulation?: {
+    at:string;
+    before:{ posture:string; alertCount:number; attacker:Record<string,unknown>|null; twinAssets:number|null; twinRelationships:number|null };
+    expected:{ outcome:string; measurable:string[] };
+    result:string;
+    limitation:string;
+  } | null;
+  verification?: {
+    at:string; outcome:string; detail:string;
+    observed:{ posture:string; alertCount:number; attacker:Record<string,unknown>|null };
+  } | null;
+  rollbackState?: string;
+  appliedExternallyAt?: string;
 };
 
 export type TelemetryChange = {
@@ -117,4 +133,48 @@ export type TelemetrySnapshot = {
   current: { at: string; health: NetworkHealth; hosts: NetworkHost[]; security: SecurityAnalysis };
   changes: TelemetryChange[];
   generatedAt: string;
+};
+
+
+export type DigitalTwinNode = TopologyNode & {
+  assetType:string;
+  trustTier:string;
+  interface:string;
+  managementIp:string;
+  macAddress:string;
+  critical:boolean;
+  labThreatMarker:boolean;
+};
+export type DigitalTwin = {
+  generatedAt:string;
+  nodes:DigitalTwinNode[];
+  links:(TopologyLink & { certainty:string })[];
+  zones:{ id:string; name:string; count:number; trustTier:string; vlan:number|null; members:string[] }[];
+  relationships:{ id:string; source:string; sourceLabel:string; target:string; targetLabel:string; label:string; certainty:string }[];
+  policy:{ id:string; sourceZone:string; targetZone:string; expectation:string; verification:string; reason:string }[];
+  securitySummary:{ posture:string; alertCount:number; criticalCount:number; highCount:number };
+  confidence:{ physicalTopology:string; endpointAttachments:string; policyEnforcement:string };
+};
+export type PathAnalysis = {
+  found:boolean;
+  source:string;
+  target:string;
+  hops?:{ node:DigitalTwinNode; via:(TopologyLink & { certainty?:string })|null }[];
+  relationshipPath?:boolean;
+  reachability?:string;
+  certainty?:string;
+  policyExpectation?:DigitalTwin['policy'][number]|null;
+  explanation?:string;
+  reason?:string;
+  generatedAt:string;
+};
+export type BlastRadius = {
+  found:boolean;
+  asset:string|{id:string;label:string;zone:string;trustTier:string};
+  depth?:number;
+  affected:{ id:string; label:string; zone:string; trustTier:string; critical:boolean; distance:number; certainty:string }[];
+  criticalAssets?:{ id:string; label:string; zone:string; trustTier:string; critical:boolean; distance:number; certainty:string }[];
+  note?:string;
+  reason?:string;
+  generatedAt:string;
 };
