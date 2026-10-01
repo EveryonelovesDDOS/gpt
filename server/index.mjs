@@ -7,6 +7,7 @@ import { createAgent } from './agent.mjs';
 import { createPacketTracerClient } from './packetTracer.mjs';
 import { createIncidentManager } from './incidents.mjs';
 import { createTelemetryManager } from './telemetry.mjs';
+import { createDigitalTwin } from './digitalTwin.mjs';
 import { listFiles, readDocument } from './tools.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -39,8 +40,9 @@ export function createServer({
   const workspace = path.join(projectRoot, 'data', 'workspace');
   const dist = path.join(projectRoot, 'dist');
   const networkClient = createPacketTracerClient({ fetcher });
-  const agent = createAgent({ root: workspace, model, ollama, fetcher, networkClient });
-  const incidents = createIncidentManager({ networkClient });
+  const digitalTwin = createDigitalTwin({ networkClient });
+  const agent = createAgent({ root: workspace, model, ollama, fetcher, networkClient, digitalTwin });
+  const incidents = createIncidentManager({ networkClient, digitalTwin });
   const telemetry = createTelemetryManager({ networkClient });
   const server = http.createServer(async (req, res) => {
     const origin = req.headers.origin;
@@ -81,6 +83,22 @@ export function createServer({
       if (url.pathname === '/api/network/hosts' && req.method === 'GET') return json(res, 200, { hosts: await networkClient.getHosts() }, origin);
       if (url.pathname === '/api/network/topology' && req.method === 'GET') return json(res, 200, await networkClient.getTopology(), origin);
       if (url.pathname === '/api/network/security' && req.method === 'GET') return json(res, 200, await networkClient.getSecurityAnalysis(), origin);
+      if (url.pathname === '/api/network/digital-twin' && req.method === 'GET') return json(res, 200, await digitalTwin.build(), origin);
+      if (url.pathname === '/api/network/path' && req.method === 'POST') {
+        const { source, target } = await body(req);
+        if (!source || !target) throw new Error('Source and target are required');
+        return json(res, 200, await digitalTwin.path(source, target), origin);
+      }
+      if (url.pathname === '/api/network/blast-radius' && req.method === 'POST') {
+        const { asset, depth } = await body(req);
+        if (!asset) throw new Error('Asset is required');
+        return json(res, 200, await digitalTwin.blastRadius(asset, depth), origin);
+      }
+      if (url.pathname === '/api/network/connected-assets' && req.method === 'POST') {
+        const { asset } = await body(req);
+        if (!asset) throw new Error('Asset is required');
+        return json(res, 200, await digitalTwin.connectedTo(asset), origin);
+      }
       if (url.pathname === '/api/incidents' && req.method === 'GET') return json(res, 200, await incidents.getTimeline(), origin);
       if (url.pathname === '/api/incidents/cases' && req.method === 'GET') return json(res, 200, { cases: incidents.listCases() }, origin);
       const openIncidentMatch = url.pathname.match(/^\/api\/incidents\/([^/]+)\/open$/);
