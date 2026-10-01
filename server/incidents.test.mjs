@@ -29,6 +29,19 @@ const networkClient = {
       },
     ];
   },
+  async getTopology() {
+    return {
+      nodes:[
+        { id:'device:core', kind:'device', label:'CORE-SW', role:'core-switch', ip:'10.0.0.2', zone:'CORE' },
+        { id:'host:attack', kind:'host', label:'ATTACKER-PC', role:'attacker', ip:'192.168.40.66', zone:'GUEST', vlan:40 },
+        { id:'host:server', kind:'host', label:'SERVER', role:'endpoint', ip:'192.168.50.10', zone:'SERVER', vlan:50 },
+      ],
+      links:[
+        { id:'link', source:'device:core', target:'host:attack', label:'FastEthernet0/4', sourceType:'controller' },
+      ],
+      physicalAvailable:false,
+    };
+  },
 };
 
 test('incident timeline records current security snapshot', async () => {
@@ -60,4 +73,21 @@ test('guest isolation proposal is reversible and approval gated', async () => {
   assert.match(proposal.commands.join('\n'), /192\.168\.40\.0/);
   assert.match(proposal.commands.join('\n'), /192\.168\.50\.0/);
   assert.match(proposal.rollback.join('\n'), /no ip access-list extended/);
+});
+
+
+test('incident workspace correlates evidence and safe response options', async () => {
+  const manager = createIncidentManager({ networkClient });
+  const incidentCase = await manager.openCase('lab-threat:attack');
+  assert.equal(incidentCase.status, 'investigating');
+  assert.equal(incidentCase.source.name, 'ATTACKER-PC');
+  assert.equal(incidentCase.evidence.some(x => x.label === 'Trust zone'), true);
+  assert.equal(incidentCase.path.some(x => x.label === 'SERVER'), true);
+  assert.equal(incidentCase.recommendations.some(x => x.kind === 'quarantine_attacker_port'), true);
+
+  const plan = await manager.propose('quarantine_attacker_port', incidentCase.id);
+  assert.equal(plan.incidentCaseId, incidentCase.id);
+
+  const closed = manager.closeCase(incidentCase.id);
+  assert.equal(closed.status, 'closed');
 });
