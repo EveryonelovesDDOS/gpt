@@ -1,4 +1,4 @@
-import { AgentRun, DefensiveAction, Health, IncidentTimeline, NetworkDevice, NetworkHealth, NetworkHost, NetworkTopology, SecurityAnalysis } from './types';
+import { AgentRun, DefensiveAction, Health, IncidentCase, IncidentTimeline, NetworkDevice, NetworkHealth, NetworkHost, NetworkTopology, SecurityAnalysis, TelemetrySnapshot } from './types';
 
 export const defaultEndpoint = () => {
   if (typeof window !== 'undefined' && window.location?.protocol?.startsWith('http')) {
@@ -39,6 +39,10 @@ export const getNetworkTopology = (base: string, token: string) => request<Netwo
 export const getSecurityAnalysis = (base: string, token: string) => request<SecurityAnalysis>(base, '/api/network/security', token);
 
 export const getIncidents = (base: string, token: string) => request<IncidentTimeline>(base, '/api/incidents', token);
+export const getIncidentCases = (base: string, token: string) => request<{ cases: IncidentCase[] }>(base, '/api/incidents/cases', token);
+export const openIncident = (base: string, token: string, alertId: string) => request<IncidentCase>(base, `/api/incidents/${encodeURIComponent(alertId)}/open`, token, 'POST');
+export const closeIncident = (base: string, token: string, caseId: string) => request<IncidentCase>(base, `/api/incidents/cases/${caseId}/close`, token, 'POST');
+export const getTelemetryChanges = (base: string, token: string) => request<TelemetrySnapshot>(base, '/api/network/changes', token);
 export const getActions = (base: string, token: string) => request<{ proposals: DefensiveAction[] }>(base, '/api/actions', token);
-export const proposeAction = (base: string, token: string, kind: string) => request<DefensiveAction>(base, '/api/actions/propose', token, 'POST', { kind });
+export const proposeAction = (base: string, token: string, kind: string, incidentCaseId = '') => request<DefensiveAction>(base, '/api/actions/propose', token, 'POST', { kind, incidentCaseId });
 export const decideAction = (base: string, token: string, id: string, approved: boolean) => request<DefensiveAction>(base, `/api/actions/${id}/decision`, token, 'POST', { approved });
