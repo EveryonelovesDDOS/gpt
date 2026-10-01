@@ -194,18 +194,19 @@ function operatorSections(text:string) {
 }
 function severityColor(T:Palette,value:string) { return ['critical','high'].includes(value)?T.coral:['warning','medium'].includes(value)?T.amber:T.mint; }
 
-function Header({live,themeMode,onToggleTheme,onConnect,onRefresh}:{live:boolean;themeMode:ThemeMode;onToggleTheme:()=>void;onConnect:()=>void;onRefresh:()=>void}) {
+function Header({live,themeMode,onToggleTheme,onConnect,onRefresh,onDemo}:{live:boolean;themeMode:ThemeMode;onToggleTheme:()=>void;onConnect:()=>void;onRefresh:()=>void;onDemo:()=>void}) {
   const {T,s}=useTheme();
   return <View style={s.header}>
     <View style={s.brandRow}>
       <LinearGradient colors={[T.mint,T.violet]} start={{x:0,y:0}} end={{x:1,y:1}} style={s.logo}><Text style={s.logoText}>N</Text></LinearGradient>
-      <View><Text style={s.brand}>NEXUS</Text><Text style={s.brandSub}>V10 · DIGITAL TWIN</Text></View>
+      <View><Text style={s.brand}>NEXUS</Text><Text style={s.brandSub}>V12 · DEMO ENGINE</Text></View>
     </View>
     <View style={s.headerActions}>
       <Pressable onPress={onRefresh} style={[s.livePill,{backgroundColor:live?T.mintSoft:T.surface2}]}>
         {live?<PulseHalo color={T.mint}/>:<View style={[s.statusDot,{backgroundColor:T.faint}]}/>}
         <Text style={[s.liveText,{color:live?T.mint:T.muted}]}>{live?'LIVE':'PREVIEW'}</Text>
       </Pressable>
+      <Pressable onPress={onDemo} style={s.roundButton}><Icon name="play-circle" size={16} color={T.violet}/></Pressable>
       <Pressable onPress={onToggleTheme} style={s.roundButton}><Icon name={themeMode==='dark'?'sun':'moon'} size={16} color={themeMode==='dark'?'#F6D36A':T.text}/></Pressable>
       <Pressable onPress={onConnect} style={s.roundButton}><Icon name="link-2" size={16} color={T.text}/></Pressable>
     </View>
@@ -244,6 +245,14 @@ function Home({live,network,topology,security,changes,digitalTwin,setPage}:{live
 
     <SectionHead eyebrow="PRIORITY" title="What needs attention" action={<Pressable onPress={()=>setPage('security')}><Text style={s.sectionAction}>View all</Text></Pressable>}/>
     {topAlert?<Pressable onPress={()=>setPage('security')} style={s.priority}><View style={s.priorityIcon}><Icon name="alert-triangle" size={17} color={T.coral}/></View><View style={{flex:1}}><View style={s.changeTitleRow}><Text style={s.priorityTitle}>{topAlert.title}</Text><Text style={s.priorityMeta}>{topAlert.severity.toUpperCase()}</Text></View><Text style={s.priorityText}>{topAlert.detail}</Text></View><Icon name="chevron-right" size={17} color={T.faint}/></Pressable>:<View style={s.cardFlat}><Text style={[s.changeTitle,{color:T.mint}]}>No urgent signal</Text><Text style={s.changeDetail}>Current NEXUS heuristics are quiet.</Text></View>}
+
+    <Pressable onPress={()=>setPage('demo')} style={s.demoLaunch}>
+      <LinearGradient colors={[T.violetSoft,T.blueSoft]} start={{x:0,y:0}} end={{x:1,y:1}} style={s.demoLaunchInner}>
+        <View style={s.demoLaunchIcon}><Icon name="play-circle" size={18} color={T.violet}/></View>
+        <View style={{flex:1}}><Text style={s.demoLaunchKicker}>PRESENTATION MODE</Text><Text style={s.demoLaunchTitle}>Run the full NEXUS story</Text><Text style={s.demoLaunchText}>Baseline → signal → Autopilot → Digital Twin → human approval → verification.</Text></View>
+        <Icon name="chevron-right" size={17} color={T.violet}/>
+      </LinearGradient>
+    </Pressable>
 
     <SectionHead eyebrow="WORKSPACES" title="Jump back in"/>
     <View style={s.grid2}>{[
