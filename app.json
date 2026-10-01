@@ -1,15 +1,24 @@
 {
   "expo": {
-    "name": "NEXUS AI Network Command Center",
+    "name": "NEXUS",
     "slug": "nexus-ai-network-command-center",
-    "version": "1.0.0",
+    "version": "1.2.0",
     "orientation": "portrait",
+    "scheme": "nexus",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#090D15"
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.nexus.networkcommandcenter"
     },
     "android": {
+      "package": "com.nexus.networkcommandcenter",
+      "versionCode": 12,
       "adaptiveIcon": {
         "backgroundColor": "#090D15",
         "foregroundImage": "./assets/android-icon-foreground.png",
