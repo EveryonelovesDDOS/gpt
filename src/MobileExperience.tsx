@@ -145,11 +145,12 @@ function SectionHead({eyebrow,title,action}:{eyebrow:string;title:string;action?
   return <View style={s.sectionHead}><View style={{flex:1}}><Text style={s.eyebrow}>{eyebrow}</Text><Text style={s.sectionTitle}>{title}</Text></View>{action}</View>;
 }
 
-function Home({live,network,topology,security,setPage}:{live:boolean;network:NetworkHealth;topology:NetworkTopology|null;security:SecurityAnalysis|null;setPage:(p:MobilePage)=>void}) {
+function Home({live,network,topology,security,changes,setPage}:{live:boolean;network:NetworkHealth;topology:NetworkTopology|null;security:SecurityAnalysis|null;changes:TelemetryChange[];setPage:(p:MobilePage)=>void}) {
   const hosts=topology?.nodes.filter(n=>n.kind==='host')||[];
   const alertCount=security?.alertCount||0;
   const score=Math.max(24,Math.min(100,Math.round((network.reachableCount/Math.max(network.deviceCount,1))*76 + (alertCount?8:24))));
   const topAlert=security?.alerts?.[0];
+  const latestChange=changes.find(item=>item.type!=='baseline')||changes[0];
 
   return <View style={s.page}>
     <Reveal>
@@ -177,6 +178,10 @@ function Home({live,network,topology,security,setPage}:{live:boolean;network:Net
 
     <Reveal delay={140}>
       <View style={s.flowCompact}><ContinuousDataFlow label="PACKET FLOW" sublabel="controller → fabric → endpoints"/></View>
+    </Reveal>
+    <Reveal delay={170}>
+      <SectionHead eyebrow="LIVE CHANGE" title="What just changed"/>
+      {latestChange ? <ChangeCard change={latestChange}/> : <View style={s.clearCard}><View style={s.clearIcon}><Icon name="activity" size={17} color={C.mint}/></View><View><Text style={s.clearTitle}>Baseline is quiet</Text><Text style={s.clearText}>NEXUS will surface device, host, segment and alert changes here.</Text></View></View>}
     </Reveal>
 
     <Reveal delay={200}>
@@ -206,7 +211,7 @@ function Home({live,network,topology,security,setPage}:{live:boolean;network:Net
   </View>;
 }
 
-function Overview({network,topology,security}:{network:NetworkHealth;topology:NetworkTopology|null;security:SecurityAnalysis|null}) {
+function Overview({network,topology,security,changes}:{network:NetworkHealth;topology:NetworkTopology|null;security:SecurityAnalysis|null;changes:TelemetryChange[]}) {
   const hosts=topology?.nodes.filter(n=>n.kind==='host')||[];
   const zones=useMemo(()=>[
     {label:'Trusted',count:hosts.filter(n=>['ADMIN','FINANCE','STAFF'].includes(n.zone)).length,color:C.mint},
@@ -227,6 +232,11 @@ function Overview({network,topology,security}:{network:NetworkHealth;topology:Ne
       <StatCard icon="shield" value={security?.alertCount||0} label="Active alerts" tone="coral"/>
       <StatCard icon="alert-octagon" value={security?.criticalCount||0} label="Critical" tone="coral"/>
       <StatCard icon="wifi" value={network.controllerOnline?'On':'Off'} label="Controller" tone="mint"/>
+    </View>
+
+    <SectionHead eyebrow="LIVE TELEMETRY" title="Recent changes"/>
+    <View style={s.changeList}>
+      {changes.length ? changes.slice(0,4).map(change=><ChangeCard key={change.id} change={change}/>) : <View style={s.emptyState}><Icon name="activity" size={24} color={C.mint}/><Text style={s.emptyTitle}>No change events yet</Text><Text style={s.emptyText}>Once the live baseline moves, NEXUS will record it here.</Text></View>}
     </View>
 
     <SectionHead eyebrow="SEGMENTATION" title="Trust zones"/>
