@@ -376,7 +376,7 @@ function InteractiveTwinGraph({digitalTwin,intent}:{digitalTwin:DigitalTwin|null
         const color=danger?T.coral:critical?T.violet:node.kind==='device'?T.blue:T.mint;
         const bg=danger?T.coralSoft:critical?T.violetSoft:node.kind==='device'?T.blueSoft:T.mintSoft;
         return <Pressable key={node.id} onPress={()=>{setSelected(node.id);setMode('focus');}} style={({pressed})=>[
-          s.graphNode,{left:p.x*width-nodeW/2,top:p.y*canvasHeight-nodeH/2,width:nodeW,minHeight:nodeH,borderColor:active?color:T.line,backgroundColor:active?bg:T.surface,opacity:pressed?.86:1},
+          s.graphNode,{left:p.x*width-nodeW/2,top:p.y*canvasHeight-nodeH/2,width:nodeW,minHeight:nodeH,borderColor:active?color:T.line,backgroundColor:active?bg:T.surface,opacity:pressed?0.86:1},
         ]}>
           <View style={[s.graphNodeDot,{backgroundColor:color}]}/><Text style={s.graphNodeLabel} numberOfLines={1}>{node.label}</Text><Text style={s.graphNodeMeta} numberOfLines={1}>{node.zone}{node.vlan?` · V${node.vlan}`:''}</Text>
         </Pressable>;
@@ -503,6 +503,25 @@ function Experience(props:Props) {
   const {T,s}=useTheme();
   const {page,setPage,live,network,topology,digitalTwin,security,serverHealth,actions,incidentCases,changes,themeMode,onToggleTheme,incidentMode,setIncidentMode,busy,prompt,setPrompt,run,editEndpoint,setEditEndpoint,editPair,setEditPair,onConnect,onRefresh,onSubmit,onCreatePlan,onDecidePlan,onOpenIncident,onCloseIncident,onSimulatePlan,onMarkPlanApplied,onVerifyPlan,onRollbackPlan,notice,clearNotice}=props;
   const scrollRef=useRef<ScrollView>(null);
+  const [twinIntent,setTwinIntent]=useState<TwinIntent>(null);
+
+  function handleAgentAction(action:NonNullable<AgentRun['actions']>[number]) {
+    if(action.type==='ask' && action.payload.prompt) {
+      setPrompt(action.payload.prompt);
+      setPage('agent');
+      return;
+    }
+    if(action.type==='open-incident' && action.payload.alertId) {
+      onOpenIncident(action.payload.alertId);
+      return;
+    }
+    const nonce=Date.now();
+    if(action.type==='focus-twin' && action.payload.asset) setTwinIntent({type:'focus',asset:action.payload.asset,nonce});
+    if(action.type==='show-blast-radius' && action.payload.asset) setTwinIntent({type:'blast',asset:action.payload.asset,nonce});
+    if(action.type==='show-path' && action.payload.source && action.payload.target) setTwinIntent({type:'path',source:action.payload.source,target:action.payload.target,nonce});
+    if(['focus-twin','show-blast-radius','show-path'].includes(action.type)) setPage('topology');
+  }
+
   useEffect(()=>{if(page!=='agent'||!run)return;const t=setTimeout(()=>scrollRef.current?.scrollToEnd({animated:true}),180);return()=>clearTimeout(t);},[page,run?.status,run?.answer,run?.events.length]);
   return <SafeAreaView style={s.root} edges={['top','bottom']}>
     <Header live={live} themeMode={themeMode} onToggleTheme={onToggleTheme} onConnect={()=>setPage('settings')} onRefresh={onRefresh}/>
@@ -510,9 +529,9 @@ function Experience(props:Props) {
     <ScrollView ref={scrollRef} style={s.scroll} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
       {page==='home'&&<Home live={live} network={network} topology={topology} security={security} changes={changes} digitalTwin={digitalTwin} setPage={setPage}/>}
       {page==='dashboard'&&<Overview network={network} topology={topology} security={security} changes={changes}/>}
-      {page==='topology'&&<Fabric topology={topology} digitalTwin={digitalTwin} incidentMode={incidentMode} setIncidentMode={setIncidentMode}/>}
+      {page==='topology'&&<Fabric topology={topology} digitalTwin={digitalTwin} incidentMode={incidentMode} setIncidentMode={setIncidentMode} intent={twinIntent}/>}
       {page==='security'&&<Defend security={security} cases={incidentCases} actions={actions} onCreatePlan={onCreatePlan} onDecide={onDecidePlan} onOpenIncident={onOpenIncident} onCloseIncident={onCloseIncident} onSimulate={onSimulatePlan} onApplied={onMarkPlanApplied} onVerify={onVerifyPlan} onRollback={onRollbackPlan}/>}
-      {page==='agent'&&<Agent live={live} serverHealth={serverHealth} busy={busy} prompt={prompt} setPrompt={setPrompt} run={run} onSubmit={onSubmit}/>}
+      {page==='agent'&&<Agent live={live} serverHealth={serverHealth} busy={busy} prompt={prompt} setPrompt={setPrompt} run={run} onSubmit={onSubmit} onAction={handleAgentAction}/>}
       {page==='settings'&&<Connect live={live} editEndpoint={editEndpoint} setEditEndpoint={setEditEndpoint} editPair={editPair} setEditPair={setEditPair} onConnect={onConnect} busy={busy} serverHealth={serverHealth}/>}
     </ScrollView>
     <View style={s.nav}>{nav.map(item=>{const active=page===item.id;return <Pressable key={item.id} onPress={()=>setPage(item.id)} style={s.navItem}><View style={[s.navIcon,active&&s.navIconActive]}><Icon name={item.icon} size={17} color={active?T.ink:T.muted}/></View><Text style={[s.navText,active&&s.navTextActive]}>{item.label}</Text></Pressable>})}</View>
