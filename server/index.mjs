@@ -118,8 +118,19 @@ export function createServer({
         const { kind, incidentCaseId } = await body(req);
         return json(res, 201, await incidents.propose(kind, incidentCaseId || ''), origin);
       }
-      const actionMatch = url.pathname.match(/^\/api\/actions\/([\da-f-]+)\/decision$/);
-      if (actionMatch && req.method === 'POST') { const { approved } = await body(req); if (typeof approved !== 'boolean') throw new Error('Approval must be boolean'); return json(res, 200, incidents.decide(actionMatch[1], approved), origin); }
+      const actionMatch = url.pathname.match(/^\/api\/actions\/([\da-f-]+)\/(decision|simulate|applied|verify|rollback)$/);
+      if (actionMatch && req.method === 'POST') {
+        const [, id, action] = actionMatch;
+        if (action === 'decision') {
+          const { approved } = await body(req);
+          if (typeof approved !== 'boolean') throw new Error('Approval must be boolean');
+          return json(res, 200, incidents.decide(id, approved), origin);
+        }
+        if (action === 'simulate') return json(res, 200, await incidents.simulate(id), origin);
+        if (action === 'applied') return json(res, 200, incidents.markApplied(id), origin);
+        if (action === 'verify') return json(res, 200, await incidents.verify(id), origin);
+        if (action === 'rollback') return json(res, 200, incidents.requestRollback(id), origin);
+      }
       if (url.pathname === '/api/files' && req.method === 'GET') {
         const files = await listFiles(workspace); return json(res, 200, { files }, origin);
       }
