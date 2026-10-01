@@ -1,86 +1,22 @@
 import { randomUUID } from 'node:crypto';
 
-const severityRank = { critical: 4, high: 3, medium: 2, info: 1 };
-
-export function createIncidentManager({ networkClient, digitalTwin = null }) {
+export function createIncidentManager({ networkClient, digitalTwin = null, telemetry = null }) {
   const history = [];
   const proposals = new Map();
   const incidentRegistry = new Map();
   const cases = new Map();
 
-  async function snapshot() {
-    const analysis = await networkClient.getSecurityAnalysis();
-    const now = new Date().toISOString();
-    const seen = new Set();
-    const incidents = (analysis.alerts || []).map(alert => {
-      seen.add(alert.id);
-      const existing = incidentRegistry.get(alert.id);
-      const incident = {
-        id: alert.id,
-        severity: alert.severity,
-        category: alert.category,
-        title: alert.title,
-        detail: alert.detail,
-        evidence: alert.evidence,
-        status: 'active',
-        firstSeen: existing?.firstSeen || now,
-        lastSeen: now,
-        occurrences: (existing?.occurrences || 0) + 1,
-      };
-      incidentRegistry.set(alert.id, incident);
-      return incident;
-    });
+  const nowIso = () => new Date().toISOString();
+  const activeCaseForAlert = alertId => [...cases.values()].find(item => item.alertId === alertId && item.status !== 'closed');
 
-    for (const [id, incident] of incidentRegistry) {
-      if (!seen.has(id) && incident.status === 'active') {
-        incidentRegistry.set(id, { ...incident, status:'resolved', lastSeen:now });
-      }
-    }
-
-    const frame = {
-      id: randomUUID(),
-      at: now,
-      posture: analysis.posture,
-      alertCount: incidents.length,
-      incidents,
-    };
-    history.unshift(frame);
-    if (history.length > 40) history.length = 40;
-    return frame;
-  }
-
-  function listCases() {
-    return [...cases.values()].sort((a,b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
-  }
-
-  async function getTimeline() {
-    const current = await snapshot();
-    return {
-      current,
-      timeline: history.slice(0, 20),
-      cases: listCases(),
-      generatedAt: new Date().toISOString(),
-    };
-  }
-
-  async function openCase(alertId) {
-    const [analysis, hosts, topology] = await Promise.all([
-      networkClient.getSecurityAnalysis(),
-      networkClient.getHosts(),
-      networkClient.getTopology(),
-    ]);
-    const alert = (analysis.alerts || []).find(item => item.id === alertId);
-    if (!alert) throw new Error('The selected incident is no longer active');
-
-    const existing = [...cases.values()].find(item => item.alertId === alertId && item.status !== 'closed');
-    if (existing) return existing;
-
+  function buildCase(alert, analysis, hosts, topology, { autoOpened = false, reason = '' } = {}) {
     const hostName = String(alert.evidence?.host || '');
     const host = hosts.find(item => item.name === hostName || item.id === alert.evidence?.hostId || item.ip === alert.evidence?.ip);
     const core = topology.nodes.find(node => node.role === 'core-switch');
     const sourceNode = topology.nodes.find(node => node.label === hostName || node.ip === host?.ip);
     const sourceLink = topology.links.find(link => link.target === sourceNode?.id || link.source === sourceNode?.id);
     const protectedZones = [...new Set(topology.nodes.filter(node => ['SERVER','MANAGEMENT','PUBLIC'].includes(node.zone)).map(node => node.zone))];
+    const recentChanges = telemetry?.list?.().changes?.slice(0, 4) || [];
 
     const evidence = [
       { label:'Signal', value:alert.title, source:'NEXUS security analysis', certainty:'observed' },
@@ -90,6 +26,7 @@ export function createIncidentManager({ networkClient, digitalTwin = null }) {
         { label:'Attachment', value:host.connectedInterface || 'Interface not exposed by controller', source:host.connectedInterface ? 'Packet Tracer host inventory' : 'Controller limitation', certainty:host.connectedInterface ? 'observed' : 'unknown' },
       ] : []),
       { label:'Security posture', value:analysis.posture, source:'NEXUS heuristics', certainty:'heuristic' },
+      ...(recentChanges[0] ? [{ label:'Latest change', value:recentChanges[0].title, source:'NEXUS change detection', certainty:'observed' }] : []),
     ];
 
     const path = [
@@ -119,10 +56,10 @@ export function createIncidentManager({ networkClient, digitalTwin = null }) {
       { kind:'protect_management', label:'Verify / prepare management-zone protection', priority:3 },
     ];
 
-    const now = new Date().toISOString();
-    const incidentCase = {
+    const now = nowIso();
+    return {
       id: randomUUID(),
-      alertId,
+      alertId:alert.id,
       status:'investigating',
       severity:alert.severity,
       category:alert.category,
@@ -144,7 +81,129 @@ export function createIncidentManager({ networkClient, digitalTwin = null }) {
       assessment: alert.category === 'lab-threat-marker'
         ? 'This is a simulation marker from the NEXUS lab convention. It justifies investigation, but it is not proof of malicious activity.'
         : 'NEXUS correlated the active signal with current controller observations. Validate policy and reachability before taking action.',
+      autopilot:{
+        mode:'assistive',
+        autoOpened,
+        status:autoOpened ? 'prepared' : 'manual',
+        reason: reason || (autoOpened ? 'A high-priority live signal triggered assistive investigation.' : 'Opened by operator.'),
+        preparedAt:now,
+        recentChanges:recentChanges.map(change => ({ id:change.id, at:change.at, title:change.title, severity:change.severity, entity:change.entity })),
+        humanApprovalRequired:true,
+      },
     };
+  }
+
+  async function prepareAutopilotCases(analysis) {
+    const candidates=(analysis.alerts || []).filter(alert =>
+      ['critical','high'].includes(alert.severity) || alert.category === 'lab-threat-marker'
+    ).filter(alert => !activeCaseForAlert(alert.id));
+    if (!candidates.length) return [];
+
+    const [hosts, topology] = await Promise.all([
+      networkClient.getHosts(),
+      networkClient.getTopology(),
+    ]);
+    const opened=[];
+    for (const alert of candidates) {
+      const incidentCase=buildCase(alert, analysis, hosts, topology, {
+        autoOpened:true,
+        reason:`Autopilot prepared this workspace because ${alert.severity} signal "${alert.title}" became active.`,
+      });
+      cases.set(incidentCase.id, incidentCase);
+      opened.push(incidentCase);
+    }
+    return opened;
+  }
+
+  async function snapshot() {
+    const analysis = await networkClient.getSecurityAnalysis();
+    const now = nowIso();
+    const seen = new Set();
+    const incidents = (analysis.alerts || []).map(alert => {
+      seen.add(alert.id);
+      const existing = incidentRegistry.get(alert.id);
+      const incident = {
+        id: alert.id,
+        severity: alert.severity,
+        category: alert.category,
+        title: alert.title,
+        detail: alert.detail,
+        evidence: alert.evidence,
+        status: 'active',
+        firstSeen: existing?.firstSeen || now,
+        lastSeen: now,
+        occurrences: (existing?.occurrences || 0) + 1,
+      };
+      incidentRegistry.set(alert.id, incident);
+      return incident;
+    });
+
+    for (const [id, incident] of incidentRegistry) {
+      if (!seen.has(id) && incident.status === 'active') {
+        incidentRegistry.set(id, { ...incident, status:'resolved', lastSeen:now });
+        for (const [caseId, incidentCase] of cases) {
+          if (incidentCase.alertId === id && incidentCase.status !== 'closed') {
+            cases.set(caseId, {
+              ...incidentCase,
+              alertStatus:'resolved',
+              updatedAt:now,
+              autopilot:{
+                ...(incidentCase.autopilot || {}),
+                status:'awaiting-human-review',
+                resolvedObservedAt:now,
+              },
+            });
+          }
+        }
+      }
+    }
+
+    const autoOpened=await prepareAutopilotCases(analysis);
+    const frame = {
+      id: randomUUID(),
+      at: now,
+      posture: analysis.posture,
+      alertCount: incidents.length,
+      incidents,
+      autoOpenedCaseIds:autoOpened.map(item=>item.id),
+    };
+    history.unshift(frame);
+    if (history.length > 40) history.length = 40;
+    return frame;
+  }
+
+  function listCases() {
+    return [...cases.values()].sort((a,b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
+  }
+
+  async function getTimeline() {
+    const current = await snapshot();
+    return {
+      current,
+      timeline: history.slice(0, 20),
+      cases: listCases(),
+      autopilot:{
+        mode:'assistive',
+        enabled:true,
+        autoOpenSeverities:['critical','high'],
+        humanApprovalRequired:true,
+        note:'Autopilot prepares investigation workspaces automatically. It never approves or executes network changes.',
+      },
+      generatedAt: nowIso(),
+    };
+  }
+
+  async function openCase(alertId) {
+    const existing = activeCaseForAlert(alertId);
+    if (existing) return existing;
+    const [analysis, hosts, topology] = await Promise.all([
+      networkClient.getSecurityAnalysis(),
+      networkClient.getHosts(),
+      networkClient.getTopology(),
+    ]);
+    const alert = (analysis.alerts || []).find(item => item.id === alertId);
+    if (!alert) throw new Error('The selected incident is no longer active');
+    const incidentCase=buildCase(alert, analysis, hosts, topology, { autoOpened:false });
     cases.set(incidentCase.id, incidentCase);
     return incidentCase;
   }
@@ -153,7 +212,13 @@ export function createIncidentManager({ networkClient, digitalTwin = null }) {
     const incidentCase = cases.get(id);
     if (!incidentCase) throw new Error('Incident case not found');
     if (incidentCase.status === 'closed') return incidentCase;
-    const updated = { ...incidentCase, status:'closed', closedAt:new Date().toISOString(), updatedAt:new Date().toISOString() };
+    const updated = {
+      ...incidentCase,
+      status:'closed',
+      closedAt:nowIso(),
+      updatedAt:nowIso(),
+      autopilot:{ ...(incidentCase.autopilot || {}), status:'closed-by-human' },
+    };
     cases.set(id, updated);
     return updated;
   }
@@ -240,9 +305,9 @@ export function createIncidentManager({ networkClient, digitalTwin = null }) {
       requiresApproval: true,
       executionMode: 'preview-only',
       status: 'pending',
-      createdAt: new Date().toISOString(),
+      createdAt: nowIso(),
       note: 'NEXUS generates reversible change plans but does not push IOS configuration automatically because this Packet Tracer integration has no verified write transport.',
-      lifecycle: [{ at:new Date().toISOString(), step:'proposed', detail:'Reversible response plan generated.' }],
+      lifecycle: [{ at:nowIso(), step:'proposed', detail:'Reversible response plan generated.' }],
       simulation: null,
       verification: null,
       rollbackState: 'ready',
@@ -250,7 +315,7 @@ export function createIncidentManager({ networkClient, digitalTwin = null }) {
     proposals.set(proposal.id, proposal);
     if (incidentCaseId) {
       const incidentCase = cases.get(incidentCaseId);
-      cases.set(incidentCaseId, { ...incidentCase, updatedAt:new Date().toISOString(), linkedActionIds:[...(incidentCase.linkedActionIds || []), proposal.id] });
+      cases.set(incidentCaseId, { ...incidentCase, updatedAt:nowIso(), linkedActionIds:[...(incidentCase.linkedActionIds || []), proposal.id] });
     }
     return proposal;
   }
@@ -260,7 +325,7 @@ export function createIncidentManager({ networkClient, digitalTwin = null }) {
     if (!proposal) throw new Error('Action proposal not found');
     if (proposal.status !== 'pending') return proposal;
     proposal.status = approved ? 'approved-preview' : 'rejected';
-    proposal.decidedAt = new Date().toISOString();
+    proposal.decidedAt = nowIso();
     proposal.approved = approved;
     proposal.lifecycle = [...(proposal.lifecycle || []), {
       at:proposal.decidedAt,
@@ -298,7 +363,7 @@ export function createIncidentManager({ networkClient, digitalTwin = null }) {
           };
 
     proposal.simulation = {
-      at:new Date().toISOString(),
+      at:nowIso(),
       before:{
         posture:security.posture,
         alertCount:security.alertCount,
@@ -320,7 +385,7 @@ export function createIncidentManager({ networkClient, digitalTwin = null }) {
     const proposal = proposals.get(id);
     if (!proposal) throw new Error('Action proposal not found');
     if (!['approved-preview','simulated','verification-failed','verification-limited'].includes(proposal.status)) throw new Error('The action is not ready to be marked as manually applied');
-    const at=new Date().toISOString();
+    const at=nowIso();
     proposal.status='verification-pending';
     proposal.appliedExternallyAt=at;
     proposal.lifecycle=[...(proposal.lifecycle || []), { at, step:'manual-apply', detail:'Operator reported that the preview commands were applied externally. NEXUS did not execute them.' }];
@@ -339,7 +404,7 @@ export function createIncidentManager({ networkClient, digitalTwin = null }) {
       digitalTwin ? digitalTwin.build() : null,
     ]);
     const attacker=hosts.find(host => host.labThreatMarker);
-    const at=new Date().toISOString();
+    const at=nowIso();
     let outcome='limited';
     let status='verification-limited';
     let detail='The current controller API does not expose enough forwarding or ACL state to prove this policy change.';
@@ -381,7 +446,7 @@ export function createIncidentManager({ networkClient, digitalTwin = null }) {
     const proposal=proposals.get(id);
     if (!proposal) throw new Error('Action proposal not found');
     if (!proposal.approved) throw new Error('Rollback is only relevant after an approved plan');
-    const at=new Date().toISOString();
+    const at=nowIso();
     proposal.rollbackState='operator-required';
     proposal.lifecycle=[...(proposal.lifecycle || []), { at, step:'rollback-ready', detail:'Rollback commands are ready for manual application. NEXUS did not execute them.' }];
     proposals.set(id, proposal);
