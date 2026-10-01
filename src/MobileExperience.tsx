@@ -5,11 +5,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { PulseHalo, Reveal } from './AuroraMotion';
 import type {
-  AgentRun, DefensiveAction, DigitalTwin, Health, IncidentCase, IncidentTimeline,
+  AgentRun, DefensiveAction, DemoScenario, DigitalTwin, Health, IncidentCase, IncidentTimeline,
   NetworkHealth, NetworkTopology, SecurityAnalysis, TelemetryChange,
 } from './types';
 
-export type MobilePage = 'home' | 'dashboard' | 'topology' | 'security' | 'agent' | 'settings';
+export type MobilePage = 'home' | 'dashboard' | 'topology' | 'security' | 'agent' | 'demo' | 'settings';
 type IconName = keyof typeof Feather.glyphMap;
 type ThemeMode = 'light' | 'dark';
 
@@ -20,6 +20,8 @@ type Props = {
   network: NetworkHealth;
   topology: NetworkTopology | null;
   digitalTwin: DigitalTwin | null;
+  demoScenario: DemoScenario | null;
+  demoPlaying: boolean;
   security: SecurityAnalysis | null;
   incidents: IncidentTimeline | null;
   serverHealth: Health | null;
@@ -49,6 +51,12 @@ type Props = {
   onMarkPlanApplied: (id:string) => void;
   onVerifyPlan: (id:string) => void;
   onRollbackPlan: (id:string) => void;
+  onStartDemo: () => void;
+  onAdvanceDemo: () => void;
+  onPreviousDemo: () => void;
+  onResetDemo: () => void;
+  onJumpDemo: (stageId:string) => void;
+  onPlayDemo: () => void;
   notice: string;
   clearNotice: () => void;
 };
