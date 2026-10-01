@@ -1,0 +1,61 @@
+name: Android APK
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "App.tsx"
+      - "src/**"
+      - "assets/**"
+      - "app.json"
+      - "package.json"
+      - "package-lock.json"
+      - "eas.json"
+      - ".github/workflows/android-apk.yml"
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Android project
+        run: npx expo prebuild --platform android --clean --no-install
+
+      - name: Build release APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Prepare artifact
+        run: |
+          mkdir -p release
+          cp android/app/build/outputs/apk/release/app-release.apk release/NEXUS-v1.2.0.apk
+
+      - name: Upload NEXUS APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: NEXUS-v1.2.0-android-apk
+          path: release/NEXUS-v1.2.0.apk
+          if-no-files-found: error
+          retention-days: 14
