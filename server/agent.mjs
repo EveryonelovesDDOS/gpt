@@ -213,6 +213,91 @@ function synthesizeFinal(prompt, context) {
   const hosts = context.get_network_hosts;
   const devices = context.get_network_devices;
   const topology = context.get_network_topology;
+  const twin = context.get_network_digital_twin;
+  const pathAnalysis = context.analyze_network_path;
+  const blastRadius = context.get_blast_radius;
+  const connected = context.get_connected_assets;
+
+  if (pathAnalysis) {
+    const hopText=(pathAnalysis.hops || []).map(h=>h.node?.label).filter(Boolean).join(' → ');
+    return `OBSERVED
+- Relationship path: ${pathAnalysis.found ? (hopText || pathAnalysis.source + ' → ' + pathAnalysis.target) : 'not found in the current digital twin'}.
+- Relationship certainty: ${pathAnalysis.certainty || 'unknown'}.
+- IP reachability: ${pathAnalysis.reachability || 'not-verified'}.
+
+INFERRED
+A digital-twin relationship is not the same as verified end-to-end traffic reachability.
+
+RISK
+Treat unverified forwarding or isolation as a review item, especially around protected zones.
+
+NEXT CHECKS
+1. Verify routing and policy enforcement where available.
+2. Confirm the source and target VLAN assignments.
+3. Refresh the twin after topology changes.
+
+CONFIDENCE
+Medium — relationship evidence is available, while forwarding policy is only partially observable.`;
+  }
+
+  if (blastRadius) {
+    const critical=(blastRadius.criticalAssets || []).map(a=>a.label).join(', ') || 'none identified';
+    return `OBSERVED
+- ${blastRadius.affected?.length || 0} graph-adjacent assets are within the selected depth.
+- Critical assets in that graph set: ${critical}.
+
+INFERRED
+This is structural impact context from the digital twin, not a forwarding verdict.
+
+RISK
+Critical assets in the highlighted set deserve priority verification.
+
+NEXT CHECKS
+1. Inspect highlighted critical assets.
+2. Verify segmentation and recent network changes.
+
+CONFIDENCE
+Medium — based on certainty-labelled graph relationships.`;
+  }
+
+  if (connected) {
+    const neighbors=(connected.neighbors || []).map(n=>`- ${n.label}: ${n.zone} via ${n.via} (${n.certainty})`).join('\n') || '- No direct neighbors are represented.';
+    return `OBSERVED
+${neighbors}
+
+INFERRED
+These are direct relationships for ${connected.asset?.label || 'the selected asset'} in the current digital twin.
+
+RISK
+A direct graph relationship does not itself prove IP reachability.
+
+NEXT CHECKS
+1. Review untrusted or protected neighbors.
+2. Verify the relationship certainty and VLAN context.
+
+CONFIDENCE
+High for the listed graph relationships; forwarding behavior remains separately verified.`;
+  }
+
+  if (twin && /topology|fabric|digital twin|network|拓扑|网络/.test(p)) {
+    return `OBSERVED
+- Digital twin contains ${twin.nodes?.length || 0} assets, ${twin.links?.length || 0} relationships, and ${twin.zones?.length || 0} trust zones.
+- Policy enforcement confidence: ${twin.confidence?.policyEnforcement || 'unknown'}.
+
+INFERRED
+The twin preserves certainty labels instead of treating every relationship as verified traffic flow.
+
+RISK
+Inferred links require separate verification.
+
+NEXT CHECKS
+1. Inspect a selected asset and its direct neighbors.
+2. Run path or impact analysis for the current incident.
+
+CONFIDENCE
+High for represented inventory; policy enforcement remains separately verified.`;
+  }
+
 
   if (health && /health|healthy|status|健康|状态/.test(p)) {
     const stable = health.allReachable;
