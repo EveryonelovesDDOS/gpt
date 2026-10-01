@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { definitions, executeTool, isWrite, safeName, toolNames } from './tools.mjs';
 
-const system = `You are NEXUS, a local-first AI network operations agent. Reply in the user's language. You can inspect local workspace documents, calculate, and query the connected Cisco Packet Tracer controller for devices, hosts, topology, health, and defensive security analysis.
+const system = `You are NEXUS, a local-first AI network operations agent. Reply in the user's language. You can inspect local workspace documents, calculate, query the connected Cisco Packet Tracer controller, and reason over the NEXUS digital twin for devices, hosts, topology, trust zones, graph relationships, path analysis, and blast radius.
 
 NETWORK RULES
 - Use live network observations instead of guessing.
@@ -10,6 +10,11 @@ NETWORK RULES
 - Never invent VLAN, ACL, routing, interface, reachability, attack-path, or host facts that tools do not expose.
 - A host named ATTACKER-PC is a lab simulation marker, not proof of malicious activity.
 - Never imply a configuration change was executed unless an execution tool reports success.
+- For questions such as "can A reach B?", use analyze_network_path when possible and clearly distinguish relationship-path evidence from verified IP reachability.
+- For "what is connected to X?" use get_connected_assets when possible.
+- For blast-radius/impact questions, use get_blast_radius and state that graph adjacency is not proof of compromise propagation.
+- Prefer the digital twin for relationship questions; prefer controller observations for live state.
+- If policy enforcement cannot be verified from controller data, say so plainly.
 - File writes require explicit approval.
 
 ANSWER FORMAT
@@ -32,7 +37,7 @@ High / Medium / Low, with one short reason.
 
 Keep the response concise. Do not dump raw JSON into the final answer.`;
 
-const limit = 8;
+const limit = 10;
 const note = (run, kind, title, detail = '') => run.events.push({ id: randomUUID(), kind, title, detail: String(detail).slice(0, 650), at: new Date().toISOString() });
 
 function parseResult(result) {
@@ -59,6 +64,24 @@ function summarizeTool(name, result) {
     if (name === 'get_security_analysis') {
       return `Posture ${data.posture}; ${data.alertCount || 0} alerts (${data.criticalCount || 0} critical, ${data.highCount || 0} high).`;
     }
+    if (name === 'get_network_digital_twin') {
+      return `Digital twin ready: ${data.nodes?.length || 0} assets, ${data.links?.length || 0} relationships, ${data.zones?.length || 0} trust zones; policy enforcement ${data.confidence?.policyEnforcement || 'unknown'}.`;
+    }
+    if (name === 'analyze_network_path') {
+      return data.found
+        ? `Relationship path ${data.source} → ${data.target}: ${data.hops?.length || 0} nodes; reachability ${data.reachability}; certainty ${data.certainty || 'unknown'}.`
+        : `No current digital-twin relationship path established between ${data.source} and ${data.target}.`;
+    }
+    if (name === 'get_blast_radius') {
+      return data.found
+        ? `Blast-radius graph for ${data.asset?.label}: ${data.affected?.length || 0} adjacent/dependent assets, ${data.criticalAssets?.length || 0} critical assets.`
+        : `Blast-radius asset not found: ${data.asset}.`;
+    }
+    if (name === 'get_connected_assets') {
+      return data.found
+        ? `${data.asset?.label} has ${data.neighbors?.length || 0} directly connected assets in the digital twin.`
+        : `Connected-assets lookup could not find ${data.asset}.`;
+    }
     if (name === 'list_files') return `${Array.isArray(data) ? data.length : 0} workspace documents found.`;
     if (name === 'search_files') return `${Array.isArray(data) ? data.length : 0} matching lines found.`;
     if (name === 'read_file') return 'Workspace document read successfully.';
@@ -74,7 +97,9 @@ function preloadTools(prompt) {
   if (/attacker|intruder|guest|where is|位于|攻击/.test(p)) return ['get_network_hosts','get_security_analysis'];
   if (/device|inventory|discovered|设备|清单/.test(p)) return ['get_network_devices'];
   if (/alert|security|risk|threat|安全|风险|告警/.test(p)) return ['get_security_analysis','get_network_topology'];
-  if (/topology|fabric|vlan|segment|reach|path|拓扑|网络|路径/.test(p)) return ['get_network_topology','get_security_analysis'];
+  if (/blast|impact|affected|dependency|radius|影响|波及/.test(p)) return ['get_network_digital_twin','get_security_analysis'];
+  if (/connected to|connects to|neighbor|attached|what is connected|连接到|相连/.test(p)) return ['get_network_digital_twin','get_network_topology'];
+  if (/topology|fabric|vlan|segment|reach|reachable|path|拓扑|网络|路径|可达/.test(p)) return ['get_network_digital_twin','get_security_analysis'];
   return [];
 }
 
@@ -206,8 +231,9 @@ Medium — topology combines controller observations with explicitly labelled la
   return 'I completed the available checks, but the current tool evidence is not sufficient for a substantive network assessment. Ask me to inspect network health, topology, devices, hosts, or security posture.';
 }
 
-export function createAgent({ root, model, ollama = 'http://127.0.0.1:11434', fetcher = fetch, networkClient = null }) {
+export function createAgent({ root, model, ollama = 'http://127.0.0.1:11434', fetcher = fetch, networkClient = null, digitalTwin = null }) {
   const runs = new Map();
+  const recentTurns = [];
   let activeModel = model;
 
   async function availableModels(signal) {
@@ -255,7 +281,7 @@ export function createAgent({ root, model, ollama = 'http://127.0.0.1:11434', fe
   async function collect(run, name, args = {}) {
     note(run, 'tool', name, name.startsWith('get_network_') || name === 'get_security_analysis' ? 'Reading live Packet Tracer context' : 'Running local tool');
     let result;
-    try { result = await executeTool(root, name, args, { networkClient }); }
+    try { result = await executeTool(root, name, args, { networkClient, digitalTwin }); }
     catch (e) { result = `Tool error: ${e.message}`; }
     const parsed = parseResult(result);
     run.context[name] = parsed;
@@ -287,6 +313,13 @@ export function createAgent({ root, model, ollama = 'http://127.0.0.1:11434', fe
         if (!calls.length) {
           const content = String(message.content || '').trim();
           run.answer = (isGenericFinal(content) ? synthesizeFinal(run.prompt, run.context) : content).slice(0,10000);
+          run.followUps = [
+            'Show me the evidence behind this assessment.',
+            'What should I verify next?',
+            ...(run.context.get_security_analysis?.alertCount ? ['Open the highest-priority incident.'] : []),
+          ].slice(0,3);
+          recentTurns.push({ prompt:run.prompt, answer:run.answer });
+          if (recentTurns.length > 6) recentTurns.shift();
           run.status = 'completed';
           note(run, 'final', 'Assessment ready', 'NEXUS produced an evidence-based response.');
           return;
@@ -311,7 +344,7 @@ export function createAgent({ root, model, ollama = 'http://127.0.0.1:11434', fe
               if (run.cancelled) return;
               try {
                 run.pending = null;
-                const result = approved ? await executeTool(root, name, args, { networkClient }) : 'User declined the write. Continue without modifying files.';
+                const result = approved ? await executeTool(root, name, args, { networkClient, digitalTwin }) : 'User declined the write. Continue without modifying files.';
                 note(run, approved ? 'success' : 'denied', approved ? 'Workspace updated' : 'Write declined', approved ? args.path : 'No file was changed.');
                 messages.push({ role: 'tool', tool_name: name, content: result });
                 await proceed(run, messages, steps + 1);
@@ -330,6 +363,9 @@ export function createAgent({ root, model, ollama = 'http://127.0.0.1:11434', fe
 
       if (run.cancelled) return;
       run.answer = synthesizeFinal(run.prompt, run.context);
+      run.followUps = ['Show me the evidence behind this assessment.','What should I verify next?'];
+      recentTurns.push({ prompt:run.prompt, answer:run.answer });
+      if (recentTurns.length > 6) recentTurns.shift();
       run.status = 'completed';
       note(run, 'final', 'Assessment ready', 'Tool step limit reached; NEXUS summarized the evidence collected so far.');
     } catch (e) {
@@ -341,7 +377,12 @@ export function createAgent({ root, model, ollama = 'http://127.0.0.1:11434', fe
   }
 
   async function startRun(run) {
-    const messages = [{ role:'system', content:system }, { role:'user', content:run.prompt }];
+    const messages = [{ role:'system', content:system }];
+    for (const turn of recentTurns.slice(-3)) {
+      messages.push({ role:'user', content:turn.prompt });
+      messages.push({ role:'assistant', content:turn.answer });
+    }
+    messages.push({ role:'user', content:run.prompt });
     try {
       await prime(run, messages);
       if (!run.cancelled) await proceed(run, messages);
@@ -373,6 +414,7 @@ export function createAgent({ root, model, ollama = 'http://127.0.0.1:11434', fe
       events:run.events,
       evidence:run.evidence,
       answer:run.answer,
+      followUps:run.followUps || [],
       error:run.error,
       pending:run.pending ? { name:run.pending.name, path:run.pending.args.path, preview:run.pending.preview } : null,
     };
