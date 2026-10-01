@@ -394,37 +394,84 @@ function Defend({security,incidentCases,actions,onCreatePlan,onDecidePlan,onOpen
   </View>;
 }
 
+function AnswerSections({text}:{text:string}) {
+  const sections=operatorSections(text);
+  const icons:Record<string,IconName>={OBSERVED:'eye',INFERRED:'git-merge',RISK:'alert-triangle','NEXT CHECKS':'check-square',CONFIDENCE:'target','NEXUS RESPONSE':'command'};
+  return <View style={s.answerSections}>
+    {sections.map((part,i)=>{
+      const risk=part.label==='RISK';
+      const confidence=part.label==='CONFIDENCE';
+      return <View key={part.label+i} style={[s.answerSection,risk&&s.answerRisk,confidence&&s.answerConfidence]}>
+        <View style={s.answerSectionHead}>
+          <View style={[s.answerSectionIcon,{backgroundColor:risk?C.coralSoft:confidence?C.blueSoft:C.violetSoft}]}>
+            <Icon name={icons[part.label]||'command'} size={14} color={risk?C.coral:confidence?C.blue:C.violet}/>
+          </View>
+          <Text style={[s.answerSectionLabel,{color:risk?C.coral:confidence?C.blue:C.violet}]}>{part.label}</Text>
+        </View>
+        <Text style={s.answerSectionText}>{part.body}</Text>
+      </View>;
+    })}
+  </View>;
+}
+
 function Agent({live,serverHealth,busy,prompt,setPrompt,run,onSubmit}:{live:boolean;serverHealth:Health|null;busy:boolean;prompt:string;setPrompt:(v:string)=>void;run:AgentRun|null;onSubmit:()=>void}) {
+  const [traceOpen,setTraceOpen]=useState(false);
+  const working=!!run&&['thinking','resuming'].includes(run.status);
+
   return <View style={s.page}>
     <SectionHead eyebrow="NEXUS AI" title="Ask the network" action={<View style={[s.contextPill,{backgroundColor:live?C.mintSoft:'#F2F4F7'}]}><View style={[s.statusDot,{backgroundColor:live?C.mint:C.faint}]}/><Text style={s.contextPillText}>{live?'LIVE CONTEXT':'NO CONTEXT'}</Text></View>}/>
     <LinearGradient colors={['#191C2C','#272147','#35265E']} style={s.aiHero}>
       <View style={s.aiOrb}><View style={s.aiOrbInner}><Text style={s.aiOrbText}>N</Text></View></View>
-      <Text style={s.aiHeroTitle}>Network intelligence,{"\n"}ready when you are.</Text>
-      <Text style={s.aiHeroCopy}>Ask about health, trust zones, devices, risk or what to check next.</Text>
+      <Text style={s.aiHeroTitle}>Evidence first.{"\n"}Action second.</Text>
+      <Text style={s.aiHeroCopy}>NEXUS reads live telemetry, separates observations from inference, and gives you the next safe checks.</Text>
       <View style={s.aiModelRow}><Icon name="cpu" size={13} color="#C9C3FF"/><Text style={s.aiModelText}>{serverHealth?.model||'Local model'} · {serverHealth?.modelReady?'ready':'auto fallback'}</Text></View>
     </LinearGradient>
 
     <View style={s.composer}>
-      <TextInput value={prompt} onChangeText={setPrompt} multiline placeholder="Ask NEXUS anything about this lab…" placeholderTextColor={C.faint} style={s.composerInput}/>
-      <Pressable onPress={onSubmit} disabled={busy} style={[s.sendButton,busy&&{opacity:.6}]}><Icon name={busy?'loader':'arrow-up'} size={18} color="#FFFFFF"/></Pressable>
+      <TextInput value={prompt} onChangeText={setPrompt} multiline placeholder="Ask NEXUS about this live lab…" placeholderTextColor={C.faint} style={s.composerInput}/>
+      <Pressable onPress={onSubmit} disabled={busy||prompt.trim().length<3} style={[s.sendButton,(busy||prompt.trim().length<3)&&{opacity:.45}]}><Icon name={busy?'loader':'arrow-up'} size={18} color="#FFFFFF"/></Pressable>
     </View>
 
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.promptChips}>
-      {[
-        'Review my network health',
-        'Where is ATTACKER-PC?',
-        'Explain the current alerts',
-        'What should I check next?',
-      ].map(q=><Pressable key={q} onPress={()=>setPrompt(q)} style={s.promptChip}><Text style={s.promptChipText}>{q}</Text></Pressable>)}
+      {['Review my network health','Where is ATTACKER-PC?','Explain the current alerts','What should I check next?'].map(q=><Pressable key={q} onPress={()=>setPrompt(q)} style={s.promptChip}><Text style={s.promptChipText}>{q}</Text></Pressable>)}
     </ScrollView>
 
-    {run&&<View style={s.runCard}>
-      <View style={s.runHeader}><Text style={s.runLabel}>AGENT RUN</Text><Text style={[s.runStatus,{color:run.status==='completed'?C.mint:run.status==='failed'?C.coral:C.violet}]}>{run.status.toUpperCase()}</Text></View>
-      <Text style={s.runPrompt}>{run.prompt}</Text>
-      <View style={s.runEvents}>{run.events.slice(-5).map(e=><View key={e.id} style={s.runEvent}><View style={[s.runEventDot,{backgroundColor:e.kind==='error'?C.coral:e.kind==='success'?C.mint:C.violet}]}/><View style={{flex:1}}><Text style={s.runEventTitle}>{e.title}</Text>{!!e.detail&&<Text style={s.runEventDetail}>{e.detail}</Text>}</View></View>)}</View>
-      {!!run.answer&&<View style={s.answerBox}><Text style={s.answerLabel}>NEXUS RESPONSE</Text><Text style={s.answerText}>{run.answer}</Text></View>}
+    {run ? <View style={s.runCard}>
+      <View style={s.runHeader}>
+        <View style={{flex:1}}><Text style={s.runLabel}>CURRENT INVESTIGATION</Text><Text style={s.runPrompt}>{run.prompt}</Text></View>
+        <View style={[s.runStatusPill,{backgroundColor:run.status==='completed'?C.mintSoft:run.status==='failed'?C.coralSoft:C.violetSoft}]}>
+          <Text style={[s.runStatus,{color:run.status==='completed'?C.mint:run.status==='failed'?C.coral:C.violet}]}>{run.status.toUpperCase()}</Text>
+        </View>
+      </View>
+
+      {working&&<View style={s.thinkingRow}><View style={s.thinkingPulse}/><Text style={s.thinkingText}>NEXUS is correlating live evidence…</Text></View>}
+
+      {!!run.evidence?.length&&<View style={s.evidenceSummary}>
+        <Text style={s.runSubLabel}>LIVE EVIDENCE</Text>
+        {run.evidence.slice(-4).map((item,i)=><View key={item.tool+i} style={s.agentEvidenceRow}>
+          <View style={s.agentEvidenceCheck}><Icon name="check" size={11} color={C.mint}/></View>
+          <Text style={s.agentEvidenceText}>{item.summary}</Text>
+        </View>)}
+      </View>}
+
+      {!!run.events.length&&<Pressable onPress={()=>setTraceOpen(!traceOpen)} style={s.traceToggle}>
+        <View style={s.traceToggleLeft}><Icon name="activity" size={14} color={C.violet}/><Text style={s.traceToggleText}>{traceOpen?'Hide':'Show'} investigation trace</Text></View>
+        <Icon name={traceOpen?'chevron-up':'chevron-down'} size={15} color={C.muted}/>
+      </Pressable>}
+
+      {traceOpen&&<View style={s.runEvents}>
+        {run.events.map((e,i)=><View key={e.id} style={s.runEvent}>
+          <View style={s.runEventRail}><View style={[s.runEventDot,{backgroundColor:e.kind==='error'?C.coral:e.kind==='success'||e.kind==='final'?C.mint:C.violet}]}/>{i<run.events.length-1&&<View style={s.runEventStem}/>}</View>
+          <View style={{flex:1}}><Text style={s.runEventTitle}>{e.title}</Text>{!!e.detail&&<Text style={s.runEventDetail}>{cleanMarkup(e.detail)}</Text>}</View>
+        </View>)}
+      </View>}
+
+      {!!run.answer&&<View style={s.finalAnswer}>
+        <View style={s.finalAnswerHead}><View style={s.nexusAnswerIcon}><Text style={s.nexusAnswerIconText}>N</Text></View><View><Text style={s.answerLabel}>NEXUS ASSESSMENT</Text><Text style={s.answerMeta}>Evidence-aware · local model</Text></View></View>
+        <AnswerSections text={run.answer}/>
+      </View>}
       {!!run.error&&<View style={s.agentError}><Icon name="alert-triangle" size={15} color={C.coral}/><Text style={s.agentErrorText}>{run.error}</Text></View>}
-    </View>}
+    </View> : <View style={s.aiEmpty}><View style={s.aiEmptyIcon}><Icon name="command" size={23} color={C.violet}/></View><Text style={s.aiEmptyTitle}>Ready for a live question</Text><Text style={s.aiEmptyText}>Ask about health, ATTACKER-PC, trust zones, alerts, or what to verify next.</Text></View>}
   </View>;
 }
 
