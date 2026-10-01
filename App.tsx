@@ -10,10 +10,10 @@ import { AnimatedTabs, ContinuousDataFlow, DayBackdrop, PageTransition, PulseHal
 import { TopologyScene } from './src/TopologyScene';
 import { HomePage } from './src/HomePage';
 import { MobileExperience } from './src/MobileExperience';
-import { AgentRun, DefensiveAction, DigitalTwin, Health, IncidentCase, IncidentTimeline, NetworkHealth, NetworkTopology, SecurityAnalysis, TelemetryChange } from './src/types';
-import { checkHealth, closeIncident, decideAction, defaultEndpoint, getActions, getDigitalTwin, getIncidents, getNetworkHealth, getNetworkTopology, getRun, getSecurityAnalysis, getTelemetryChanges, markActionApplied, openIncident, proposeAction, requestActionRollback, simulateAction, startRun, verifyAction } from './src/api';
+import { AgentRun, DefensiveAction, DemoScenario, DigitalTwin, Health, IncidentCase, IncidentTimeline, NetworkHealth, NetworkTopology, SecurityAnalysis, TelemetryChange } from './src/types';
+import { advanceDemoScenario, checkHealth, closeIncident, decideAction, defaultEndpoint, getActions, getDemoScenario, getDigitalTwin, getIncidents, getNetworkHealth, getNetworkTopology, getRun, getSecurityAnalysis, getTelemetryChanges, jumpDemoScenario, markActionApplied, openIncident, previousDemoScenario, proposeAction, requestActionRollback, resetDemoScenario, simulateAction, startDemoScenario, startRun, verifyAction } from './src/api';
 
-type Page = 'home' | 'dashboard' | 'topology' | 'security' | 'agent' | 'settings';
+type Page = 'home' | 'dashboard' | 'topology' | 'security' | 'agent' | 'demo' | 'settings';
 type IconName = keyof typeof Feather.glyphMap;
 
 const P = {
@@ -119,6 +119,8 @@ function AppContent() {
   const [incidentCases,setIncidentCases] = useState<IncidentCase[]>([]);
   const [changes,setChanges] = useState<TelemetryChange[]>([]);
   const [digitalTwin,setDigitalTwin] = useState<DigitalTwin|null>(null);
+  const [demoScenario,setDemoScenario] = useState<DemoScenario|null>(null);
+  const [demoPlaying,setDemoPlaying] = useState(false);
   const [themeMode,setThemeMode] = useState<'light'|'dark'>('light');
   const [incidentMode,setIncidentMode] = useState(false);
   const [connected,setConnected] = useState(false);
@@ -146,9 +148,11 @@ function AppContent() {
         getActions(endpoint,pair),
         getTelemetryChanges(endpoint,pair),
         getDigitalTwin(endpoint,pair),
-      ]).then(([n,t,sec,inc,act,telemetry,twin])=>{
+        getDemoScenario(endpoint,pair),
+      ]).then(([n,t,sec,inc,act,telemetry,twin,demo])=>{
         setNetwork(n); setTopology(t); setSecurity(sec); setIncidents(inc); setActions(act.proposals);
         setDigitalTwin(twin);
+        setDemoScenario(demo);
         setIncidentCases(inc.cases || []);
         setChanges(telemetry.changes || []);
       }).catch(()=>{});
@@ -178,6 +182,7 @@ function AppContent() {
     { id:'topology' as Page, label:'Fabric', icon:'share-2' as IconName },
     { id:'security' as Page, label:'Defend', icon:'shield' as IconName },
     { id:'agent' as Page, label:'NEXUS AI', icon:'command' as IconName },
+    { id:'demo' as Page, label:'Demo', icon:'play-circle' as IconName },
     { id:'settings' as Page, label:'Connect', icon:'sliders' as IconName },
   ],[]);
 
@@ -187,7 +192,7 @@ function AppContent() {
       const base = editEndpoint.trim().replace(/\/$/,'');
       const token = editPair.trim();
       const h = await checkHealth(base);
-      const [n,t,sec,inc,act,telemetry,twin] = await Promise.all([
+      const [n,t,sec,inc,act,telemetry,twin,demo] = await Promise.all([
         getNetworkHealth(base,token),
         getNetworkTopology(base,token),
         getSecurityAnalysis(base,token),
@@ -195,9 +200,10 @@ function AppContent() {
         getActions(base,token),
         getTelemetryChanges(base,token),
         getDigitalTwin(base,token),
+        getDemoScenario(base,token),
       ]);
       setEndpoint(base); setPair(token); setServerHealth(h); setNetwork(n); setTopology(t); setSecurity(sec); setIncidents(inc); setActions(act.proposals);
-      setIncidentCases(inc.cases || []); setChanges(telemetry.changes || []); setDigitalTwin(twin); setConnected(true);
+      setIncidentCases(inc.cases || []); setChanges(telemetry.changes || []); setDigitalTwin(twin); setDemoScenario(demo); setConnected(true);
       await AsyncStorage.multiSet([['@nexus/endpoint',base],['@nexus/pair',token]]);
       setNotice('Live Packet Tracer telemetry connected.');
       setPage('dashboard');
@@ -211,10 +217,10 @@ function AppContent() {
     if (!connected) { setPage('settings'); setNotice('Connect the local gateway first.'); return; }
     setBusy(true);
     try {
-      const [n,t,sec,inc,act,telemetry,twin] = await Promise.all([
-        getNetworkHealth(endpoint,pair),getNetworkTopology(endpoint,pair),getSecurityAnalysis(endpoint,pair),getIncidents(endpoint,pair),getActions(endpoint,pair),getTelemetryChanges(endpoint,pair),getDigitalTwin(endpoint,pair)
+      const [n,t,sec,inc,act,telemetry,twin,demo] = await Promise.all([
+        getNetworkHealth(endpoint,pair),getNetworkTopology(endpoint,pair),getSecurityAnalysis(endpoint,pair),getIncidents(endpoint,pair),getActions(endpoint,pair),getTelemetryChanges(endpoint,pair),getDigitalTwin(endpoint,pair),getDemoScenario(endpoint,pair)
       ]);
-      setNetwork(n); setTopology(t); setSecurity(sec); setIncidents(inc); setActions(act.proposals); setIncidentCases(inc.cases || []); setChanges(telemetry.changes || []); setDigitalTwin(twin);
+      setNetwork(n); setTopology(t); setSecurity(sec); setIncidents(inc); setActions(act.proposals); setIncidentCases(inc.cases || []); setChanges(telemetry.changes || []); setDigitalTwin(twin); setDemoScenario(demo);
     } catch(e) { setNotice(e instanceof Error ? e.message : 'Refresh failed'); }
     finally { setBusy(false); }
   }
@@ -302,6 +308,63 @@ function AppContent() {
     finally { setBusy(false); }
   }
 
+  async function startDemo() {
+    if (!connected) { setPage('settings'); setNotice('Connect NEXUS before starting Demo Mode.'); return; }
+    setBusy(true);
+    try {
+      const next=await startDemoScenario(endpoint,pair);
+      setDemoScenario(next);
+      setPage('demo');
+      setNotice('Presentation Demo Mode started. Synthetic evidence is clearly labelled.');
+    } catch(e) { setNotice(e instanceof Error ? e.message : 'Unable to start demo'); }
+    finally { setBusy(false); }
+  }
+
+  async function advanceDemo() {
+    setBusy(true);
+    try { setDemoScenario(await advanceDemoScenario(endpoint,pair)); }
+    catch(e) { setNotice(e instanceof Error ? e.message : 'Unable to advance demo'); }
+    finally { setBusy(false); }
+  }
+
+  async function previousDemo() {
+    setBusy(true);
+    try { setDemoScenario(await previousDemoScenario(endpoint,pair)); }
+    catch(e) { setNotice(e instanceof Error ? e.message : 'Unable to rewind demo'); }
+    finally { setBusy(false); }
+  }
+
+  async function jumpDemo(stageId:string) {
+    setBusy(true);
+    try { setDemoScenario(await jumpDemoScenario(endpoint,pair,stageId)); setPage('demo'); }
+    catch(e) { setNotice(e instanceof Error ? e.message : 'Unable to jump demo stage'); }
+    finally { setBusy(false); }
+  }
+
+  async function resetDemo() {
+    setDemoPlaying(false);
+    setBusy(true);
+    try { setDemoScenario(await resetDemoScenario(endpoint,pair)); setNotice('Demo Mode reset. Live network state was not changed.'); }
+    catch(e) { setNotice(e instanceof Error ? e.message : 'Unable to reset demo'); }
+    finally { setBusy(false); }
+  }
+
+  async function playDemoStory() {
+    if (!connected || demoPlaying) return;
+    setDemoPlaying(true);
+    setPage('demo');
+    try {
+      let current=demoScenario?.enabled ? demoScenario : await startDemoScenario(endpoint,pair);
+      setDemoScenario(current);
+      while(current.stageIndex < current.stageCount-1) {
+        await new Promise(resolve=>setTimeout(resolve,1250));
+        current=await advanceDemoScenario(endpoint,pair);
+        setDemoScenario(current);
+      }
+    } catch(e) { setNotice(e instanceof Error ? e.message : 'Demo playback stopped'); }
+    finally { setDemoPlaying(false); }
+  }
+
   async function toggleTheme() {
     const next=themeMode==='light'?'dark':'light';
     setThemeMode(next);
@@ -332,6 +395,8 @@ function AppContent() {
       incidentCases={incidentCases}
       changes={changes}
       digitalTwin={digitalTwin}
+      demoScenario={demoScenario}
+      demoPlaying={demoPlaying}
       themeMode={themeMode}
       onToggleTheme={toggleTheme}
       incidentMode={incidentMode}
@@ -355,6 +420,12 @@ function AppContent() {
       onMarkPlanApplied={markPlanApplied}
       onVerifyPlan={verifyPlan}
       onRollbackPlan={rollbackPlan}
+      onStartDemo={startDemo}
+      onAdvanceDemo={advanceDemo}
+      onPreviousDemo={previousDemo}
+      onResetDemo={resetDemo}
+      onJumpDemo={jumpDemo}
+      onPlayDemo={playDemoStory}
       notice={notice}
       clearNotice={()=>setNotice('')}
     />;
@@ -363,7 +434,7 @@ function AppContent() {
   const header = <View style={[s.header,themeMode==='dark'&&{backgroundColor:'rgba(12,19,33,.96)',borderBottomColor:'#263247'}]}>
     <View style={s.brand}>
       <LinearGradient colors={[P.mint,P.lilac]} start={{x:0,y:0}} end={{x:1,y:1}} style={s.logo}><Text style={s.logoText}>N</Text></LinearGradient>
-      <View><Text style={[s.brandName,themeMode==='dark'&&{color:'#F7FAFF'}]}>NEXUS</Text><Text style={[s.brandSub,themeMode==='dark'&&{color:'#94A3B8'}]}>V11 · INTERACTIVE TWIN · INCIDENT AUTOPILOT</Text></View>
+      <View><Text style={[s.brandName,themeMode==='dark'&&{color:'#F7FAFF'}]}>NEXUS</Text><Text style={[s.brandSub,themeMode==='dark'&&{color:'#94A3B8'}]}>V12 · DEMO ENGINE · RELEASE CANDIDATE</Text></View>
     </View>
     {desktop && <AnimatedTabs items={nav} activeId={page} onSelect={(id)=>setPage(id as Page)} width={94} />}
     <View style={s.headerRight}>
