@@ -687,6 +687,43 @@ function AppContent() {
         </View>
       </>}
 
+      {page==='demo' && <>
+        <SectionTitle overline="PRESENTATION ENGINE" title="Run the NEXUS story" right={<View style={s.pageActions}><StatusChip label="SIMULATION" tone="purple"/><StatusChip label={demoScenario?.enabled?'ACTIVE':'READY'} tone={demoScenario?.enabled?'good':'neutral'}/></View>} />
+        <Text style={s.pageIntro}>A deterministic eight-step presentation flow. Demo evidence is synthetic and separated from live controller evidence; it never pushes IOS configuration.</Text>
+
+        <LinearGradient colors={['#171B2D','#292554','#463680']} style={[s.heroMain,{minHeight:260,marginBottom:16}]}>
+          <View style={s.heroBadge}><View style={[s.heroBadgeDot,{backgroundColor:'#8B7CFF'}]}/><Text style={[s.heroBadgeText,{color:'#C8C2FF'}]}>NEXUS DEMO MODE</Text></View>
+          <Text style={[s.heroTitle,{color:'#FFFFFF',fontSize:34,lineHeight:40}]}>{demoScenario?.title||'ATTACKER-PC Containment Story'}</Text>
+          <Text style={[s.heroText,{color:'#CDD5E6'}]}>{demoScenario?.description||'Connect the local gateway to start the guided presentation story.'}</Text>
+          <View style={s.heroActions}>
+            <Pressable onPress={demoScenario?.enabled?playDemoStory:startDemo} disabled={!connected||busy||demoPlaying} style={[s.primary,(!connected||busy||demoPlaying)&&{opacity:.5}]}>
+              <Icon name={demoPlaying?'loader':'play-circle'} size={15} color="#172033"/><Text style={s.primaryText}>{demoPlaying?'PLAYING…':demoScenario?.enabled?'PLAY FULL STORY':'START DEMO'}</Text>
+            </Pressable>
+            {demoScenario?.enabled&&<Pressable onPress={resetDemo} disabled={busy||demoPlaying} style={[s.secondary,(busy||demoPlaying)&&{opacity:.5}]}><Icon name="rotate-ccw" size={14} color={P.lilac}/><Text style={s.secondaryText}>RESET</Text></Pressable>}
+          </View>
+        </LinearGradient>
+
+        {demoScenario?.current&&<View style={[s.panel,{marginBottom:16,borderColor:P.borderStrong}]}>
+          <View style={s.panelHead}><View><Text style={s.panelOverline}>{demoScenario.current.kicker}</Text><Text style={s.panelTitle}>{demoScenario.current.title}</Text></View><StatusChip label={`${demoScenario.stageIndex+1}/${demoScenario.stageCount}`} tone="purple"/></View>
+          <Text style={s.contextText}>{demoScenario.current.summary}</Text>
+          <View style={[s.progressTrack,{marginTop:14}]}><View style={[s.progressFill,{width:(demoScenario.current.progress+'%') as any}]}/></View>
+          <View style={[s.metricGrid,{flexDirection:'row',marginTop:14,marginBottom:0}]}>
+            {demoScenario.current.evidence.slice(0,3).map((item,index)=><View key={item} style={[s.metric,{minHeight:95}]}><Text style={[s.metricTrend,{color:P.lilac}]}>EVIDENCE {index+1}</Text><Text style={[s.metricLabel,{fontSize:9,lineHeight:14,marginTop:12}]}>{item}</Text></View>)}
+          </View>
+          {!!demoScenario.current.relationshipPath.length&&<View style={[s.relationshipPanel,{marginTop:14}]}><View style={s.relationshipHead}><Text style={s.relationshipTitle}>Demo relationship path</Text><Text style={s.relationshipCount}>reachability not verified</Text></View><View style={s.relationshipGrid}>{demoScenario.current.relationshipPath.map((asset,index)=><React.Fragment key={asset}><View style={s.relationshipChip}><View style={[s.relationshipDot,{backgroundColor:index===0?P.coral:index===demoScenario.current.relationshipPath.length-1?P.lilac:P.mint}]}/><Text style={s.relationshipText}>{asset}</Text></View>{index<demoScenario.current.relationshipPath.length-1&&<Icon name="arrow-right" size={14} color={P.muted}/>}</React.Fragment>)}</View></View>}
+          <View style={s.planButtons}>
+            <Pressable onPress={previousDemo} disabled={demoScenario.stageIndex===0||busy||demoPlaying} style={[s.reject,(demoScenario.stageIndex===0||busy||demoPlaying)&&{opacity:.4}]}><Text style={s.rejectText}>BACK</Text></Pressable>
+            <Pressable onPress={()=>setPage((demoScenario.current.page||'home') as Page)} style={s.secondary}><Text style={s.secondaryText}>OPEN WORKSPACE</Text></Pressable>
+            <Pressable onPress={advanceDemo} disabled={demoScenario.stageIndex>=demoScenario.stageCount-1||busy||demoPlaying} style={[s.approve,(demoScenario.stageIndex>=demoScenario.stageCount-1||busy||demoPlaying)&&{opacity:.4}]}><Text style={s.approveText}>NEXT</Text></Pressable>
+          </View>
+        </View>}
+
+        {!!demoScenario?.stages.length&&<View style={s.panel}>
+          <View style={s.panelHead}><View><Text style={s.panelOverline}>STORYBOARD</Text><Text style={s.panelTitle}>Eight-step demo flow</Text></View><Text style={s.panelMeta}>Click any stage</Text></View>
+          <View style={s.relationshipGrid}>{demoScenario.stages.map(stage=><Pressable key={stage.id} onPress={()=>jumpDemo(stage.id)} style={[s.relationshipChip,stage.state==='active'&&{borderColor:P.lilac,backgroundColor:'#F4F0FF'}]}><View style={[s.relationshipDot,{backgroundColor:stage.state==='complete'?P.mint:stage.state==='active'?P.lilac:P.muted2}]}/><Text style={s.relationshipText}>{stage.order+1}. {stage.title}</Text><Text style={s.relationshipSource}>{stage.state}</Text></Pressable>)}</View>
+        </View>}
+      </>}
+
       {page==='settings' && <>
         <SectionTitle overline="LOCAL CONNECTION" title="Connect NEXUS to your lab" />
         <Text style={s.pageIntro}>The web UI talks to your local Node gateway. Packet Tracer stays open with NEXUS-CTRL Real World Access listening on port 58000.</Text>
