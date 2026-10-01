@@ -10,8 +10,8 @@ import { AnimatedTabs, ContinuousDataFlow, DayBackdrop, PageTransition, PulseHal
 import { TopologyScene } from './src/TopologyScene';
 import { HomePage } from './src/HomePage';
 import { MobileExperience } from './src/MobileExperience';
-import { AgentRun, DefensiveAction, Health, IncidentCase, IncidentTimeline, NetworkHealth, NetworkTopology, SecurityAnalysis, TelemetryChange } from './src/types';
-import { checkHealth, closeIncident, decideAction, defaultEndpoint, getActions, getIncidents, getNetworkHealth, getNetworkTopology, getRun, getSecurityAnalysis, getTelemetryChanges, openIncident, proposeAction, startRun } from './src/api';
+import { AgentRun, DefensiveAction, DigitalTwin, Health, IncidentCase, IncidentTimeline, NetworkHealth, NetworkTopology, SecurityAnalysis, TelemetryChange } from './src/types';
+import { checkHealth, closeIncident, decideAction, defaultEndpoint, getActions, getDigitalTwin, getIncidents, getNetworkHealth, getNetworkTopology, getRun, getSecurityAnalysis, getTelemetryChanges, markActionApplied, openIncident, proposeAction, requestActionRollback, simulateAction, startRun, verifyAction } from './src/api';
 
 type Page = 'home' | 'dashboard' | 'topology' | 'security' | 'agent' | 'settings';
 type IconName = keyof typeof Feather.glyphMap;
@@ -118,6 +118,8 @@ function AppContent() {
   const [actions,setActions] = useState<DefensiveAction[]>([]);
   const [incidentCases,setIncidentCases] = useState<IncidentCase[]>([]);
   const [changes,setChanges] = useState<TelemetryChange[]>([]);
+  const [digitalTwin,setDigitalTwin] = useState<DigitalTwin|null>(null);
+  const [themeMode,setThemeMode] = useState<'light'|'dark'>('light');
   const [incidentMode,setIncidentMode] = useState(false);
   const [connected,setConnected] = useState(false);
   const [notice,setNotice] = useState('');
@@ -126,9 +128,10 @@ function AppContent() {
   const [run,setRun] = useState<AgentRun|null>(null);
 
   useEffect(()=>{
-    Promise.all([AsyncStorage.getItem('@nexus/endpoint'),AsyncStorage.getItem('@nexus/pair')]).then(([e,p])=>{
+    Promise.all([AsyncStorage.getItem('@nexus/endpoint'),AsyncStorage.getItem('@nexus/pair'),AsyncStorage.getItem('@nexus/theme')]).then(([e,p,t])=>{
       if (e) { setEndpoint(e); setEditEndpoint(e); }
       if (p) { setPair(p); setEditPair(p); }
+      if (t === 'dark' || t === 'light') setThemeMode(t);
     }).catch(()=>{});
   },[]);
 
@@ -142,8 +145,10 @@ function AppContent() {
         getIncidents(endpoint,pair),
         getActions(endpoint,pair),
         getTelemetryChanges(endpoint,pair),
-      ]).then(([n,t,sec,inc,act,telemetry])=>{
+        getDigitalTwin(endpoint,pair),
+      ]).then(([n,t,sec,inc,act,telemetry,twin])=>{
         setNetwork(n); setTopology(t); setSecurity(sec); setIncidents(inc); setActions(act.proposals);
+        setDigitalTwin(twin);
         setIncidentCases(inc.cases || []);
         setChanges(telemetry.changes || []);
       }).catch(()=>{});
@@ -182,16 +187,17 @@ function AppContent() {
       const base = editEndpoint.trim().replace(/\/$/,'');
       const token = editPair.trim();
       const h = await checkHealth(base);
-      const [n,t,sec,inc,act,telemetry] = await Promise.all([
+      const [n,t,sec,inc,act,telemetry,twin] = await Promise.all([
         getNetworkHealth(base,token),
         getNetworkTopology(base,token),
         getSecurityAnalysis(base,token),
         getIncidents(base,token),
         getActions(base,token),
         getTelemetryChanges(base,token),
+        getDigitalTwin(base,token),
       ]);
       setEndpoint(base); setPair(token); setServerHealth(h); setNetwork(n); setTopology(t); setSecurity(sec); setIncidents(inc); setActions(act.proposals);
-      setIncidentCases(inc.cases || []); setChanges(telemetry.changes || []); setConnected(true);
+      setIncidentCases(inc.cases || []); setChanges(telemetry.changes || []); setDigitalTwin(twin); setConnected(true);
       await AsyncStorage.multiSet([['@nexus/endpoint',base],['@nexus/pair',token]]);
       setNotice('Live Packet Tracer telemetry connected.');
       setPage('dashboard');
@@ -206,9 +212,9 @@ function AppContent() {
     setBusy(true);
     try {
       const [n,t,sec,inc,act,telemetry] = await Promise.all([
-        getNetworkHealth(endpoint,pair),getNetworkTopology(endpoint,pair),getSecurityAnalysis(endpoint,pair),getIncidents(endpoint,pair),getActions(endpoint,pair),getTelemetryChanges(endpoint,pair)
+        getNetworkHealth(endpoint,pair),getNetworkTopology(endpoint,pair),getSecurityAnalysis(endpoint,pair),getIncidents(endpoint,pair),getActions(endpoint,pair),getTelemetryChanges(endpoint,pair),getDigitalTwin(endpoint,pair)
       ]);
-      setNetwork(n); setTopology(t); setSecurity(sec); setIncidents(inc); setActions(act.proposals); setIncidentCases(inc.cases || []); setChanges(telemetry.changes || []);
+      setNetwork(n); setTopology(t); setSecurity(sec); setIncidents(inc); setActions(act.proposals); setIncidentCases(inc.cases || []); setChanges(telemetry.changes || []); setDigitalTwin(twin);
     } catch(e) { setNotice(e instanceof Error ? e.message : 'Refresh failed'); }
     finally { setBusy(false); }
   }
@@ -256,6 +262,52 @@ function AppContent() {
     finally { setBusy(false); }
   }
 
+  async function simulatePlan(id:string) {
+    setBusy(true);
+    try {
+      const updated=await simulateAction(endpoint,pair,id);
+      setActions(prev=>prev.map(x=>x.id===id?updated:x));
+      setNotice('Safe simulation prepared. No IOS command was executed.');
+    } catch(e) { setNotice(e instanceof Error ? e.message : 'Unable to simulate plan'); }
+    finally { setBusy(false); }
+  }
+
+  async function markPlanApplied(id:string) {
+    setBusy(true);
+    try {
+      const updated=await markActionApplied(endpoint,pair,id);
+      setActions(prev=>prev.map(x=>x.id===id?updated:x));
+      setNotice('Marked as manually applied. NEXUS is ready to verify live observations.');
+    } catch(e) { setNotice(e instanceof Error ? e.message : 'Unable to mark action applied'); }
+    finally { setBusy(false); }
+  }
+
+  async function verifyPlan(id:string) {
+    setBusy(true);
+    try {
+      const updated=await verifyAction(endpoint,pair,id);
+      setActions(prev=>prev.map(x=>x.id===id?updated:x));
+      setNotice(updated.status==='verified' ? 'Live verification supports the expected containment outcome.' : updated.verification?.detail || 'Verification completed with limitations.');
+    } catch(e) { setNotice(e instanceof Error ? e.message : 'Unable to verify action'); }
+    finally { setBusy(false); }
+  }
+
+  async function rollbackPlan(id:string) {
+    setBusy(true);
+    try {
+      const updated=await requestActionRollback(endpoint,pair,id);
+      setActions(prev=>prev.map(x=>x.id===id?updated:x));
+      setNotice('Rollback commands are ready for manual application. NEXUS did not execute them.');
+    } catch(e) { setNotice(e instanceof Error ? e.message : 'Unable to prepare rollback'); }
+    finally { setBusy(false); }
+  }
+
+  async function toggleTheme() {
+    const next=themeMode==='light'?'dark':'light';
+    setThemeMode(next);
+    try { await AsyncStorage.setItem('@nexus/theme',next); } catch {}
+  }
+
   async function decidePlan(id:string,approved:boolean) {
     setBusy(true);
     try {
@@ -279,6 +331,9 @@ function AppContent() {
       actions={actions}
       incidentCases={incidentCases}
       changes={changes}
+      digitalTwin={digitalTwin}
+      themeMode={themeMode}
+      onToggleTheme={toggleTheme}
       incidentMode={incidentMode}
       setIncidentMode={setIncidentMode}
       busy={busy}
@@ -296,25 +351,30 @@ function AppContent() {
       onDecidePlan={decidePlan}
       onOpenIncident={investigateIncident}
       onCloseIncident={finishIncident}
+      onSimulatePlan={simulatePlan}
+      onMarkPlanApplied={markPlanApplied}
+      onVerifyPlan={verifyPlan}
+      onRollbackPlan={rollbackPlan}
       notice={notice}
       clearNotice={()=>setNotice('')}
     />;
   }
 
-  const header = <View style={s.header}>
+  const header = <View style={[s.header,themeMode==='dark'&&{backgroundColor:'rgba(12,19,33,.96)',borderBottomColor:'#263247'}]}>
     <View style={s.brand}>
       <LinearGradient colors={[P.mint,P.lilac]} start={{x:0,y:0}} end={{x:1,y:1}} style={s.logo}><Text style={s.logoText}>N</Text></LinearGradient>
-      <View><Text style={s.brandName}>NEXUS</Text><Text style={s.brandSub}>V9 · AGENTIC INCIDENT · NETWORK STUDIO</Text></View>
+      <View><Text style={[s.brandName,themeMode==='dark'&&{color:'#F7FAFF'}]}>NEXUS</Text><Text style={[s.brandSub,themeMode==='dark'&&{color:'#94A3B8'}]}>V10 · DIGITAL TWIN · VERIFIED RESPONSE</Text></View>
     </View>
     {desktop && <AnimatedTabs items={nav} activeId={page} onSelect={(id)=>setPage(id as Page)} width={94} />}
     <View style={s.headerRight}>
+      <Pressable onPress={toggleTheme} style={[s.iconButton,themeMode==='dark'&&{backgroundColor:'#151E2F',borderColor:'#334155'}]}><Icon name={themeMode==='dark'?'sun':'moon'} size={15} color={themeMode==='dark'?'#F7D46A':P.text2}/></Pressable>
       <View style={s.liveHeader}>{live&&<PulseHalo color={P.mint}/>}<StatusChip label={live?'LIVE':'PREVIEW'} tone={live?'good':'neutral'} /></View>
       {desktop && <Pressable onPress={refresh} style={s.iconButton}><Icon name="refresh-cw" size={15} color={P.text2} /></Pressable>}
     </View>
   </View>;
 
-  return <SafeAreaView style={s.root} edges={['top','bottom']}>
-    <StatusBar barStyle="dark-content" />
+  return <SafeAreaView style={[s.root,themeMode==='dark'&&{backgroundColor:'#0C1321'}]} edges={['top','bottom']}>
+    <StatusBar barStyle={themeMode==='dark'?'light-content':'dark-content'} />
     <DayBackdrop />
     {header}
     {!!notice && <Pressable onPress={()=>setNotice('')} style={s.notice}><Icon name="info" size={15} color={P.amber} /><Text style={s.noticeText}>{notice}</Text><Icon name="x" size={14} color={P.muted} /></Pressable>}
