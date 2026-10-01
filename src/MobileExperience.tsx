@@ -546,6 +546,50 @@ function Agent({live,serverHealth,busy,prompt,setPrompt,run,onSubmit,onAction}:{
   </View>;
 }
 
+function DemoMode({scenario,playing,busy,onStart,onAdvance,onPrevious,onReset,onJump,onPlay,onOpenWorkspace}:{scenario:DemoScenario|null;playing:boolean;busy:boolean;onStart:()=>void;onAdvance:()=>void;onPrevious:()=>void;onReset:()=>void;onJump:(id:string)=>void;onPlay:()=>void;onOpenWorkspace:()=>void}) {
+  const {T,s}=useTheme();
+  const current=scenario?.current;
+  const tone=(value?:string)=>value==='coral'?T.coral:value==='amber'?T.amber:value==='blue'?T.blue:value==='violet'?T.violet:T.mint;
+  const currentColor=tone(current?.tone);
+  const active=scenario?.enabled;
+  return <View style={s.page}>
+    <SectionHead eyebrow="DEMO MODE" title="Presentation scenario" action={<View style={[s.badge,{backgroundColor:T.violetSoft}]}><Icon name="film" size={12} color={T.violet}/><Text style={[s.sectionAction,{color:T.violet}]}>SIMULATION</Text></View>}/>
+    <LinearGradient colors={['#151A2B','#292554','#473582']} style={s.demoHero}>
+      <View style={s.demoHeroTop}><View style={s.demoHeroIcon}><Icon name={playing?'loader':'play-circle'} size={21} color="#FFFFFF"/></View><View style={{flex:1}}><Text style={s.demoHeroKicker}>NEXUS PRESENTATION ENGINE</Text><Text style={s.demoHeroTitle}>{scenario?.title||'ATTACKER-PC Containment Story'}</Text></View></View>
+      <Text style={s.demoHeroText}>{scenario?.description||'A guided story that demonstrates the NEXUS workflow without pretending to alter the live network.'}</Text>
+      <View style={s.demoGuard}><Icon name="shield" size={13} color="#8DF0D2"/><Text style={s.demoGuardText}>Synthetic demo evidence is isolated from live controller evidence. No IOS command is executed.</Text></View>
+      <View style={s.demoHeroActions}>
+        <Pressable disabled={busy||playing} onPress={active?onPlay:onStart} style={[s.demoHeroButton,{backgroundColor:T.mint},(busy||playing)&&{opacity:.5}]}><Icon name={playing?'loader':active?'play':'play-circle'} size={14} color="#10231E"/><Text style={s.demoHeroButtonText}>{playing?'PLAYING STORY…':active?'PLAY FULL STORY':'START DEMO'}</Text></Pressable>
+        {active&&<Pressable disabled={busy||playing} onPress={onReset} style={s.demoGhostButton}><Icon name="rotate-ccw" size={13} color="#FFFFFF"/><Text style={s.demoGhostText}>RESET</Text></Pressable>}
+      </View>
+    </LinearGradient>
+
+    {current&&<View style={[s.demoStageCard,{borderColor:currentColor+'66'}]}>
+      <View style={s.demoStageHead}><View style={[s.demoStageIcon,{backgroundColor:currentColor+'1A'}]}><Icon name={current.id==='path-analysis'?'git-branch':current.id==='response-ready'?'shield':current.id==='verification'||current.id==='resolved'?'check-circle':current.id==='autopilot-prepared'?'zap':current.id==='threat-observed'?'alert-triangle':'activity'} size={16} color={currentColor}/></View><View style={{flex:1}}><Text style={[s.demoStageKicker,{color:currentColor}]}>{current.kicker}</Text><Text style={s.demoStageTitle}>{current.title}</Text></View><Text style={s.demoStageCounter}>{scenario!.stageIndex+1}/{scenario!.stageCount}</Text></View>
+      <Text style={s.demoStageSummary}>{current.summary}</Text>
+      <View style={s.demoProgress}><View style={[s.demoProgressFill,{width:(current.progress+'%') as any,backgroundColor:currentColor}]}/></View>
+      <Text style={[s.micro,{marginTop:12}]}>EVIDENCE IN THIS STEP</Text>
+      <View style={s.demoEvidenceList}>{current.evidence.map((item,index)=><View key={item+index} style={s.demoEvidenceRow}><View style={[s.demoEvidenceNo,{backgroundColor:currentColor+'18'}]}><Text style={[s.demoEvidenceNoText,{color:currentColor}]}>{index+1}</Text></View><Text style={s.demoEvidenceText}>{item}</Text></View>)}</View>
+      {!!current.relationshipPath.length&&<View style={s.demoPathBox}><Text style={s.micro}>DEMO RELATIONSHIP PATH</Text><View style={s.demoPath}>{current.relationshipPath.map((label,index)=><React.Fragment key={label}><View style={[s.demoPathNode,{borderColor:index===0?T.coral+'77':index===current.relationshipPath.length-1?T.violet+'77':T.mint+'77'}]}><Text style={s.demoPathNodeText}>{label}</Text></View>{index<current.relationshipPath.length-1&&<Icon name="arrow-right" size={13} color={T.faint}/>}</React.Fragment>)}</View><Text style={s.demoPathNote}>Graph relationship only · IP reachability stays not verified.</Text></View>}
+      {current.recommendation&&<View style={s.demoRecommendation}><View style={[s.demoRecommendationIcon,{backgroundColor:T.amberSoft}]}><Icon name="shield" size={15} color={T.amber}/></View><View style={{flex:1}}><Text style={s.demoRecommendationTitle}>{current.recommendation.title}</Text><Text style={s.demoRecommendationText}>{current.recommendation.target} · {current.recommendation.mode} · rollback ready</Text></View></View>}
+      {current.verification&&<View style={s.demoVerification}><View style={s.demoVerificationHead}><Icon name="check-circle" size={14} color={T.mint}/><Text style={s.demoVerificationLabel}>{current.verification.label}</Text></View><Text style={s.demoVerificationText}>{current.verification.detail}</Text></View>}
+      <View style={s.demoControls}>
+        <Pressable disabled={!active||scenario!.stageIndex===0||playing||busy} onPress={onPrevious} style={[s.demoControlButton,(!active||scenario!.stageIndex===0||playing||busy)&&{opacity:.35}]}><Icon name="chevron-left" size={14} color={T.text}/><Text style={s.demoControlText}>BACK</Text></Pressable>
+        <Pressable onPress={onOpenWorkspace} style={[s.demoControlButton,{backgroundColor:T.violetSoft,borderColor:T.violet+'55'}]}><Icon name="external-link" size={13} color={T.violet}/><Text style={s.demoControlText}>OPEN WORKSPACE</Text></Pressable>
+        <Pressable disabled={!active||scenario!.stageIndex>=scenario!.stageCount-1||playing||busy} onPress={onAdvance} style={[s.demoControlButton,{backgroundColor:T.mintSoft,borderColor:T.mint+'55'},(!active||scenario!.stageIndex>=scenario!.stageCount-1||playing||busy)&&{opacity:.35}]}><Text style={s.demoControlText}>NEXT</Text><Icon name="chevron-right" size={14} color={T.mint}/></Pressable>
+      </View>
+    </View>}
+
+    {!!scenario?.stages.length&&<>
+      <SectionHead eyebrow="STORYBOARD" title="Eight-step demo flow"/>
+      <View style={s.demoTimeline}>{scenario.stages.map((stage,index)=>{const color=tone(stage.tone);const complete=stage.state==='complete';const activeStage=stage.state==='active';return <Pressable key={stage.id} onPress={()=>onJump(stage.id)} style={[s.demoTimelineRow,activeStage&&{borderColor:color+'77',backgroundColor:color+'0E'}]}><View style={s.demoTimelineRail}><View style={[s.demoTimelineDot,{backgroundColor:complete||activeStage?color:T.lineStrong}]}>{complete&&<Icon name="check" size={9} color="#FFFFFF"/>}</View>{index<scenario.stages.length-1&&<View style={[s.demoTimelineStem,{backgroundColor:complete?color+'55':T.line}]}/>}</View><View style={{flex:1,paddingBottom:11}}><Text style={[s.demoTimelineKicker,{color:activeStage?color:T.muted}]}>{stage.kicker}</Text><Text style={[s.demoTimelineTitle,activeStage&&{color:T.ink}]}>{stage.title}</Text></View><Text style={[s.demoTimelineState,{color:activeStage?color:T.faint}]}>{stage.state.toUpperCase()}</Text></Pressable>})}</View>
+    </>}
+
+    <SectionHead eyebrow="PRESENTATION SAFETY" title="What Demo Mode never claims"/>
+    <View style={s.card}>{(scenario?.guardrails||['Demo Mode never pushes IOS configuration.','Synthetic evidence is separate from live controller evidence.','Human approval stays visible.']).map((item,index)=><View key={item} style={[s.deviceRow,index<(scenario?.guardrails?.length||3)-1&&s.divider]}><View style={[s.deviceIcon,{backgroundColor:T.mintSoft}]}><Icon name="shield" size={14} color={T.mint}/></View><Text style={[s.demoGuardrailText,{flex:1}]}>{item}</Text></View>)}</View>
+  </View>;
+}
+
 function Connect({live,editEndpoint,setEditEndpoint,editPair,setEditPair,onConnect,busy,serverHealth}:{live:boolean;editEndpoint:string;setEditEndpoint:(v:string)=>void;editPair:string;setEditPair:(v:string)=>void;onConnect:()=>void;busy:boolean;serverHealth:Health|null}) {
   const {T,s}=useTheme();
   return <View style={s.page}><SectionHead eyebrow="CONNECT" title="Local lab session"/><View style={s.connectionHero}><View style={[s.connectionIcon,{backgroundColor:live?T.mintSoft:T.surface3}]}><Icon name="radio" size={21} color={live?T.mint:T.muted}/></View><Text style={s.connectionTitle}>{live?'Packet Tracer is live':'Ready to connect'}</Text><Text style={s.connectionText}>{live?'Controller telemetry and the digital twin are available to NEXUS.':'Use 10.0.2.2 from the Android emulator to reach the Windows NEXUS server.'}</Text><View style={[s.connectionState,{backgroundColor:live?T.mintSoft:T.surface3}]}><View style={[s.statusDot,{backgroundColor:live?T.mint:T.faint}]}/><Text style={[s.contextText,{color:live?T.mint:T.muted}]}>{live?'CONNECTED':'OFFLINE'}</Text></View></View>
