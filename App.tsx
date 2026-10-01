@@ -9,6 +9,7 @@ import { ScanRing, ThinkingDots } from './src/NexusVisuals';
 import { AnimatedTabs, ContinuousDataFlow, DayBackdrop, PageTransition, PulseHalo, Reveal } from './src/AuroraMotion';
 import { TopologyScene } from './src/TopologyScene';
 import { HomePage } from './src/HomePage';
+import { MobileExperience } from './src/MobileExperience';
 import { AgentRun, DefensiveAction, Health, IncidentTimeline, NetworkHealth, NetworkTopology, SecurityAnalysis } from './src/types';
 import { checkHealth, decideAction, defaultEndpoint, getActions, getIncidents, getNetworkHealth, getNetworkTopology, getRun, getSecurityAnalysis, proposeAction, startRun } from './src/api';
 
@@ -235,10 +236,41 @@ function AppContent() {
     finally { setBusy(false); }
   }
 
+  if (!desktop) {
+    return <MobileExperience
+      page={page}
+      setPage={(p)=>setPage(p as Page)}
+      live={live}
+      network={shown}
+      topology={topology}
+      security={security}
+      incidents={incidents}
+      serverHealth={serverHealth}
+      actions={actions}
+      incidentMode={incidentMode}
+      setIncidentMode={setIncidentMode}
+      busy={busy}
+      prompt={prompt}
+      setPrompt={setPrompt}
+      run={run}
+      editEndpoint={editEndpoint}
+      setEditEndpoint={setEditEndpoint}
+      editPair={editPair}
+      setEditPair={setEditPair}
+      onConnect={connect}
+      onRefresh={refresh}
+      onSubmit={submit}
+      onCreatePlan={createPlan}
+      onDecidePlan={decidePlan}
+      notice={notice}
+      clearNotice={()=>setNotice('')}
+    />;
+  }
+
   const header = <View style={s.header}>
     <View style={s.brand}>
       <LinearGradient colors={[P.mint,P.lilac]} start={{x:0,y:0}} end={{x:1,y:1}} style={s.logo}><Text style={s.logoText}>N</Text></LinearGradient>
-      <View><Text style={s.brandName}>NEXUS</Text><Text style={s.brandSub}>V7 · HOME EXPERIENCE · NETWORK STUDIO</Text></View>
+      <View><Text style={s.brandName}>NEXUS</Text><Text style={s.brandSub}>V8 · MOBILE PRODUCT · NETWORK STUDIO</Text></View>
     </View>
     {desktop && <AnimatedTabs items={nav} activeId={page} onSelect={(id)=>setPage(id as Page)} width={94} />}
     <View style={s.headerRight}>
