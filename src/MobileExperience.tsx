@@ -109,6 +109,49 @@ function makeStyles(T:Palette) {
     runCard:{backgroundColor:T.surface,borderRadius:20,borderWidth:1,borderColor:T.line,padding:13},runHead:{flexDirection:'row',gap:9},runLabel:{color:T.violet,fontSize:6.3,fontWeight:'900',letterSpacing:1},runPrompt:{color:T.ink,fontSize:11.5,fontWeight:'900',lineHeight:16,marginTop:4},runState:{height:24,borderRadius:12,paddingHorizontal:8,justifyContent:'center'},runStateText:{fontSize:5.9,fontWeight:'900'},thinking:{marginTop:11,borderRadius:12,backgroundColor:T.violetSoft,padding:9,flexDirection:'row',alignItems:'center',gap:7},thinkingDot:{width:7,height:7,borderRadius:7,backgroundColor:T.violet},thinkingText:{color:T.text,fontSize:7.8,fontWeight:'800'},
     evidenceSummary:{marginTop:12,gap:7},agentEvidence:{flexDirection:'row',gap:7,alignItems:'flex-start'},checkBox:{width:19,height:19,borderRadius:7,backgroundColor:T.mintSoft,alignItems:'center',justifyContent:'center'},agentEvidenceText:{color:T.text,fontSize:7.8,lineHeight:12.5,flex:1},traceToggle:{marginTop:12,minHeight:40,borderRadius:12,borderWidth:1,borderColor:T.line,backgroundColor:T.surface2,paddingHorizontal:10,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},traceToggleText:{color:T.text,fontSize:7.8,fontWeight:'900'},traceRow:{flexDirection:'row',gap:8,minHeight:40},traceRail:{width:12,alignItems:'center'},traceDot:{width:7,height:7,borderRadius:7,marginTop:3},traceStem:{width:1,flex:1,backgroundColor:T.line,marginTop:3},traceTitle:{color:T.text,fontSize:8,fontWeight:'900'},traceDetail:{color:T.muted,fontSize:7.2,lineHeight:11.5,marginTop:2},
     answer:{marginTop:13,borderRadius:16,backgroundColor:T.violetSoft,borderWidth:1,borderColor:T.violet+'44',padding:11},answerHead:{flexDirection:'row',alignItems:'center',gap:8},answerLogo:{width:32,height:32,borderRadius:11,backgroundColor:T.violet,alignItems:'center',justifyContent:'center'},answerLogoText:{color:'#FFFFFF',fontSize:13,fontWeight:'900'},answerKicker:{color:T.violet,fontSize:6.3,fontWeight:'900',letterSpacing:.9},answerMeta:{color:T.faint,fontSize:6.3,marginTop:2},answerSections:{gap:8,marginTop:10},answerSection:{backgroundColor:T.surface,borderRadius:12,borderWidth:1,borderColor:T.line,padding:9},answerSectionHead:{flexDirection:'row',alignItems:'center',gap:6},answerSectionIcon:{width:25,height:25,borderRadius:8,alignItems:'center',justifyContent:'center'},answerSectionLabel:{fontSize:6.4,fontWeight:'900',letterSpacing:.7},answerSectionText:{color:T.text,fontSize:8.3,lineHeight:13.5,marginTop:6},followups:{marginTop:10,gap:6},followup:{borderRadius:11,borderWidth:1,borderColor:T.line,backgroundColor:T.surface,padding:9,flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},followupText:{color:T.text,fontSize:7.6,fontWeight:'800',flex:1},aiEmpty:{backgroundColor:T.surface,borderWidth:1,borderColor:T.line,borderRadius:18,padding:22,alignItems:'center'},aiEmptyIcon:{width:46,height:46,borderRadius:15,backgroundColor:T.violetSoft,alignItems:'center',justifyContent:'center'},aiEmptyTitle:{color:T.ink,fontSize:10.5,fontWeight:'900',marginTop:9},aiEmptyText:{color:T.muted,fontSize:8,lineHeight:12.5,textAlign:'center',marginTop:4,maxWidth:280},
+    twinGraphCard:{backgroundColor:T.surface,borderWidth:1,borderColor:T.line,borderRadius:22,padding:13,overflow:'hidden'},
+    twinGraphHead:{flexDirection:'row',justifyContent:'space-between',alignItems:'flex-start',gap:10},
+    graphCanvas:{marginTop:12,position:'relative',backgroundColor:T.surface2,borderWidth:1,borderColor:T.line,borderRadius:18,overflow:'hidden'},
+    graphLine:{position:'absolute',height:0,transformOrigin:'center'},
+    graphNode:{position:'absolute',borderRadius:12,borderWidth:1.4,paddingHorizontal:7,paddingVertical:6,alignItems:'center',justifyContent:'center',shadowColor:T.shadow,shadowOpacity:.05,shadowRadius:8},
+    graphNodeDot:{width:6,height:6,borderRadius:6,marginBottom:4},
+    graphNodeLabel:{color:T.ink,fontSize:7.4,fontWeight:'900',textAlign:'center',maxWidth:72},
+    graphNodeMeta:{color:T.muted,fontSize:5.8,marginTop:2,textAlign:'center',maxWidth:72},
+    graphLegend:{flexDirection:'row',flexWrap:'wrap',gap:10,marginTop:10},
+    graphLegendItem:{flexDirection:'row',alignItems:'center',gap:5},
+    graphLegendLine:{width:22,height:0,borderTopWidth:1.6},
+    graphLegendText:{color:T.muted,fontSize:6.5,fontWeight:'800'},
+    assetInspector:{marginTop:12,borderTopWidth:1,borderTopColor:T.line,paddingTop:12},
+    assetInspectorHead:{flexDirection:'row',alignItems:'flex-start',gap:9},
+    assetTitle:{color:T.ink,fontSize:15,fontWeight:'900',marginTop:3},
+    assetMeta:{color:T.muted,fontSize:7.8,marginTop:3},
+    assetFacts:{flexDirection:'row',gap:7,marginTop:10},
+    assetFact:{flex:1,backgroundColor:T.surface2,borderWidth:1,borderColor:T.line,borderRadius:11,padding:8},
+    assetFactLabel:{color:T.faint,fontSize:5.8,fontWeight:'900',letterSpacing:.7},
+    assetFactValue:{color:T.text,fontSize:7.2,fontWeight:'800',marginTop:3},
+    graphControls:{flexDirection:'row',gap:6,marginTop:10},
+    graphControl:{flex:1,minHeight:39,borderWidth:1,borderColor:T.line,borderRadius:11,backgroundColor:T.surface2,alignItems:'center',justifyContent:'center',gap:4,paddingHorizontal:4},
+    graphControlText:{color:T.text,fontSize:6.4,fontWeight:'900',textAlign:'center'},
+    graphInsight:{marginTop:9,borderRadius:11,backgroundColor:T.blueSoft,borderWidth:1,borderColor:T.blue+'44',padding:9,flexDirection:'row',gap:7,alignItems:'flex-start'},
+    graphInsightText:{color:T.text,fontSize:7.5,lineHeight:11.5,flex:1},
+
+    autopilotCard:{marginTop:11,marginBottom:13,borderWidth:1,borderColor:T.violet+'55',backgroundColor:T.violetSoft,borderRadius:14,padding:10},
+    autopilotHead:{flexDirection:'row',alignItems:'center',gap:8},
+    autopilotIcon:{width:31,height:31,borderRadius:10,backgroundColor:T.surface,alignItems:'center',justifyContent:'center'},
+    autopilotKicker:{color:T.violet,fontSize:5.8,fontWeight:'900',letterSpacing:.8},
+    autopilotTitle:{color:T.ink,fontSize:8.8,fontWeight:'900',marginTop:2},
+    autopilotText:{color:T.text,fontSize:7.6,lineHeight:11.8,marginTop:8},
+    autopilotChanges:{marginTop:9,gap:5},
+    autopilotChange:{flexDirection:'row',alignItems:'center',gap:6},
+    autopilotChangeText:{color:T.muted,fontSize:7.1,flex:1},
+    autopilotGuard:{marginTop:9,paddingTop:8,borderTopWidth:1,borderTopColor:T.violet+'33',flexDirection:'row',alignItems:'flex-start',gap:6},
+    autopilotGuardText:{color:T.text,fontSize:6.9,lineHeight:10.8,flex:1},
+
+    actionCards:{marginTop:11,gap:7},
+    actionCard:{minHeight:58,borderRadius:13,borderWidth:1,backgroundColor:T.surface,padding:9,flexDirection:'row',alignItems:'center',gap:8},
+    actionCardIcon:{width:34,height:34,borderRadius:11,alignItems:'center',justifyContent:'center'},
+    actionCardTitle:{color:T.ink,fontSize:8.5,fontWeight:'900'},
+    actionCardText:{color:T.muted,fontSize:7.1,lineHeight:11,marginTop:2},
     connectionHero:{borderRadius:22,padding:17,borderWidth:1,borderColor:T.line,backgroundColor:T.surface},connectionIcon:{width:45,height:45,borderRadius:14,alignItems:'center',justifyContent:'center'},connectionTitle:{color:T.ink,fontSize:16,fontWeight:'900',marginTop:12},connectionText:{color:T.muted,fontSize:8.5,lineHeight:13.5,marginTop:5},connectionState:{alignSelf:'flex-start',marginTop:11,borderRadius:11,paddingHorizontal:9,paddingVertical:6,flexDirection:'row',alignItems:'center',gap:5},fieldLabel:{color:T.text,fontSize:8,fontWeight:'900',marginBottom:6,marginTop:7},inputWrap:{height:47,borderWidth:1,borderColor:T.lineStrong,borderRadius:13,backgroundColor:T.surface2,paddingHorizontal:10,flexDirection:'row',alignItems:'center',gap:8},input:{flex:1,color:T.ink,fontSize:9.5},connectButton:{height:47,borderRadius:13,backgroundColor:T.mint,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:7,marginTop:14},connectButtonText:{color:'#0D2821',fontSize:8.5,fontWeight:'900'},tip:{backgroundColor:T.surface,borderWidth:1,borderColor:T.line,borderRadius:15,padding:11,flexDirection:'row',gap:9},tipIcon:{width:35,height:35,borderRadius:11,alignItems:'center',justifyContent:'center'},tipTitle:{color:T.ink,fontSize:9,fontWeight:'900'},tipText:{color:T.muted,fontSize:7.7,lineHeight:12.5,marginTop:3},
     nav:{height:74,backgroundColor:T.nav,borderTopWidth:1,borderTopColor:T.line,flexDirection:'row',paddingHorizontal:7,paddingTop:7,shadowColor:T.shadow,shadowOpacity:.08,shadowRadius:14,shadowOffset:{width:0,height:-6}},navItem:{flex:1,alignItems:'center',gap:3},navIcon:{width:38,height:34,borderRadius:12,alignItems:'center',justifyContent:'center'},navIconActive:{backgroundColor:T.mintSoft},navText:{color:T.muted,fontSize:6.5,fontWeight:'800'},navTextActive:{color:T.ink,fontWeight:'900'},
   });
@@ -234,19 +277,175 @@ function TwinSummary({digitalTwin}:{digitalTwin:DigitalTwin|null}) {
   </View>;
 }
 
-function Fabric({topology,digitalTwin,incidentMode,setIncidentMode}:{topology:NetworkTopology|null;digitalTwin:DigitalTwin|null;incidentMode:boolean;setIncidentMode:(v:boolean)=>void}) {
-  const {T,s}=useTheme(); const nodes=topology?.nodes||[]; const edge=nodes.find(n=>n.role==='edge-router'); const core=nodes.find(n=>n.role==='core-switch'); const hosts=nodes.filter(n=>n.kind==='host');
-  const flow=useRef(new Animated.Value(0)).current;
-  useEffect(()=>{const loop=Animated.loop(Animated.timing(flow,{toValue:1,duration:2100,easing:Easing.linear,useNativeDriver:true}));loop.start();return()=>loop.stop();},[flow]);
-  return <View style={s.page}>
-    <SectionHead eyebrow="FABRIC" title="Digital twin" action={<Pressable onPress={()=>setIncidentMode(!incidentMode)} style={s.modeButton}><Icon name="zap" size={12} color={incidentMode?T.coral:T.text}/><Text style={[s.modeText,incidentMode&&{color:T.coral}]}>{incidentMode?'Incident trace':'Trace mode'}</Text></Pressable>}/>
-    <TwinSummary digitalTwin={digitalTwin}/>
-    <View style={[s.fabricCard,incidentMode&&{borderColor:T.coral+'66'}]}>
-      <View style={s.fabricNode}><View style={[s.fabricNodeIcon,{backgroundColor:T.violetSoft}]}><Icon name="radio" size={18} color={T.violet}/></View><Text style={s.fabricName}>{edge?.label||'EDGE-RTR'}</Text><Text style={s.fabricIp}>{edge?.ip||'10.0.0.1'}</Text></View>
-      <View style={s.flowPath}><View style={s.flowLine}/>{[0,.33,.66].map((offset,i)=><Animated.View key={i} style={[s.packet,{backgroundColor:incidentMode?T.coral:[T.mint,T.violet,T.blue][i],opacity:flow.interpolate({inputRange:[0,.07,.93,1],outputRange:[0,1,1,0]}),transform:[{translateY:flow.interpolate({inputRange:[0,1],outputRange:[-7+offset*56,70+offset*56]})}]}]}/>)}</View>
-      <View style={s.fabricNode}><View style={[s.fabricNodeIcon,{backgroundColor:T.mintSoft}]}><Icon name="cpu" size={18} color={T.mint}/></View><Text style={s.fabricName}>{core?.label||'CORE-SW'}</Text><Text style={s.fabricIp}>{core?.ip||'10.0.0.2'}</Text></View>
+type TwinIntent =
+  | { type:'focus'; asset:string; nonce:number }
+  | { type:'path'; source:string; target:string; nonce:number }
+  | { type:'blast'; asset:string; nonce:number }
+  | null;
+
+function InteractiveTwinGraph({digitalTwin,intent}:{digitalTwin:DigitalTwin|null;intent:TwinIntent}) {
+  const {T,s}=useTheme();
+  const [width,setWidth]=useState(340);
+  const [selected,setSelected]=useState('');
+  const [mode,setMode]=useState<'focus'|'neighbors'|'path'|'blast'>('focus');
+  const [pathTarget,setPathTarget]=useState('SERVER');
+
+  const nodes=digitalTwin?.nodes || [];
+  const links=digitalTwin?.links || [];
+
+  const positions=useMemo(()=>{
+    const map=new Map<string,{x:number;y:number}>();
+    const edge=nodes.find(n=>n.role==='edge-router');
+    const core=nodes.find(n=>n.role==='core-switch');
+    if(edge) map.set(edge.id,{x:.5,y:.10});
+    if(core) map.set(core.id,{x:.5,y:.32});
+    const endpoints=nodes.filter(n=>n.id!==edge?.id&&n.id!==core?.id);
+    endpoints.forEach((node,index)=>{
+      const perRow=4;
+      const row=Math.floor(index/perRow);
+      const col=index%perRow;
+      const count=Math.min(perRow,endpoints.length-row*perRow);
+      const x=count===1?.5:(col+1)/(count+1);
+      map.set(node.id,{x,y:.61+row*.24});
+    });
+    nodes.forEach((node,index)=>{if(!map.has(node.id))map.set(node.id,{x:(index%3+1)/4,y:.55+Math.floor(index/3)*.2});});
+    return map;
+  },[nodes]);
+
+  const resolve=(value:string)=>nodes.find(n=>n.id===value||n.label.toLowerCase()===value.toLowerCase()||n.ip===value) || nodes.find(n=>n.label.toLowerCase().includes(value.toLowerCase()));
+
+  const adjacency=useMemo(()=>{
+    const map=new Map<string,{id:string;link:(typeof links)[number]}[]>();
+    nodes.forEach(n=>map.set(n.id,[]));
+    links.forEach(link=>{
+      map.get(link.source)?.push({id:link.target,link});
+      map.get(link.target)?.push({id:link.source,link});
+    });
+    return map;
+  },[nodes,links]);
+
+  const findPath=(sourceId:string,targetId:string)=>{
+    if(!sourceId||!targetId)return [] as string[];
+    const queue=[sourceId], seen=new Set([sourceId]), prev=new Map<string,string>();
+    while(queue.length){
+      const current=queue.shift()!;
+      if(current===targetId)break;
+      for(const edge of adjacency.get(current)||[]){
+        if(seen.has(edge.id))continue;
+        seen.add(edge.id); prev.set(edge.id,current); queue.push(edge.id);
+      }
+    }
+    if(!seen.has(targetId))return [];
+    const out=[targetId]; let cursor=targetId;
+    while(cursor!==sourceId){const p=prev.get(cursor);if(!p)break;cursor=p;out.push(cursor);}
+    return out.reverse();
+  };
+
+  useEffect(()=>{
+    if(!intent||!digitalTwin)return;
+    if(intent.type==='focus'){
+      const node=resolve(intent.asset); if(node){setSelected(node.id);setMode('focus');}
+    }
+    if(intent.type==='blast'){
+      const node=resolve(intent.asset); if(node){setSelected(node.id);setMode('blast');}
+    }
+    if(intent.type==='path'){
+      const source=resolve(intent.source); const target=resolve(intent.target);
+      if(source){setSelected(source.id);setMode('path');setPathTarget(target?.label||intent.target);}
+    }
+  },[intent?.nonce,digitalTwin?.generatedAt]);
+
+  useEffect(()=>{
+    if(!selected&&nodes.length){
+      const marker=nodes.find(n=>n.labThreatMarker);
+      setSelected(marker?.id || nodes.find(n=>n.role==='core-switch')?.id || nodes[0].id);
+    }
+  },[nodes.length]);
+
+  const selectedNode=nodes.find(n=>n.id===selected)||null;
+  const targetNode=resolve(pathTarget);
+  const pathIds=mode==='path'&&selectedNode&&targetNode?findPath(selectedNode.id,targetNode.id):[];
+  const highlightIds=useMemo(()=>{
+    const ids=new Set<string>();
+    if(!selectedNode)return ids;
+    ids.add(selectedNode.id);
+    if(mode==='neighbors') for(const edge of adjacency.get(selectedNode.id)||[]) ids.add(edge.id);
+    if(mode==='path') pathIds.forEach(id=>ids.add(id));
+    if(mode==='blast'){
+      const queue=[{id:selectedNode.id,depth:0}],seen=new Set([selectedNode.id]);
+      while(queue.length){
+        const item=queue.shift()!;
+        if(item.depth>=2)continue;
+        for(const edge of adjacency.get(item.id)||[]){
+          if(seen.has(edge.id))continue;
+          seen.add(edge.id);ids.add(edge.id);queue.push({id:edge.id,depth:item.depth+1});
+        }
+      }
+    }
+    return ids;
+  },[selectedNode?.id,mode,pathIds.join('|'),adjacency]);
+
+  const activeLink=(link:(typeof links)[number])=>{
+    if(mode==='focus')return link.source===selectedNode?.id||link.target===selectedNode?.id;
+    return highlightIds.has(link.source)&&highlightIds.has(link.target);
+  };
+  const canvasHeight=nodes.length>6?430:390;
+  const nodeW=82,nodeH=48;
+
+  const modeText=selectedNode ? (
+    mode==='focus' ? `${selectedNode.label} selected · tap another asset to inspect it.` :
+    mode==='neighbors' ? `${selectedNode.label} has ${adjacency.get(selectedNode.id)?.length||0} direct graph relationship(s).` :
+    mode==='blast' ? `Blast-radius view highlights graph-adjacent assets within 2 hops. This is not proof of compromise propagation.` :
+    pathIds.length ? `Relationship path: ${pathIds.map(id=>nodes.find(n=>n.id===id)?.label).filter(Boolean).join(' → ')}. IP reachability remains unverified.` : `No graph relationship path found to ${pathTarget}.`
+  ) : 'Select an asset to inspect the digital twin.';
+
+  if(!digitalTwin) return <View style={s.twinGraphCard}><Text style={s.twinTitle}>Interactive twin waiting for live data</Text><Text style={s.twinMeta}>Connect the local lab to render asset relationships.</Text></View>;
+
+  return <View style={s.twinGraphCard}>
+    <View style={s.twinGraphHead}><View><Text style={s.eyebrow}>INTERACTIVE GRAPH</Text><Text style={s.twinTitle}>Tap an asset to inspect it</Text></View><View style={[s.badge,{backgroundColor:T.mintSoft}]}><View style={[s.statusDot,{backgroundColor:T.mint}]}/><Text style={[s.sectionAction,{color:T.mint}]}>LIVE</Text></View></View>
+    <View onLayout={e=>setWidth(Math.max(280,e.nativeEvent.layout.width))} style={[s.graphCanvas,{height:canvasHeight}]}>
+      {links.map(link=>{
+        const a=positions.get(link.source),b=positions.get(link.target); if(!a||!b)return null;
+        const x1=a.x*width,y1=a.y*canvasHeight,x2=b.x*width,y2=b.y*canvasHeight;
+        const dx=x2-x1,dy=y2-y1,dist=Math.sqrt(dx*dx+dy*dy),angle=Math.atan2(dy,dx)*180/Math.PI;
+        const active=activeLink(link);
+        const lineColor=active?T.violet:T.lineStrong;
+        const style=link.certainty==='observed'?'solid':link.certainty==='known-lab'?'dashed':'dotted';
+        return <View key={link.id} style={[s.graphLine,{left:(x1+x2)/2-dist/2,top:(y1+y2)/2,width:dist,borderTopColor:lineColor,borderTopWidth:active?2.5:1.3,borderStyle:style as any,opacity:active?1:.58,transform:[{rotateZ:`${angle}deg`}]}]}/>;
+      })}
+      {nodes.map(node=>{
+        const p=positions.get(node.id)!; const active=highlightIds.has(node.id)||node.id===selectedNode?.id;
+        const danger=node.labThreatMarker||node.trustTier==='untrusted'; const critical=node.critical;
+        const color=danger?T.coral:critical?T.violet:node.kind==='device'?T.blue:T.mint;
+        const bg=danger?T.coralSoft:critical?T.violetSoft:node.kind==='device'?T.blueSoft:T.mintSoft;
+        return <Pressable key={node.id} onPress={()=>{setSelected(node.id);setMode('focus');}} style={({pressed})=>[
+          s.graphNode,{left:p.x*width-nodeW/2,top:p.y*canvasHeight-nodeH/2,width:nodeW,minHeight:nodeH,borderColor:active?color:T.line,backgroundColor:active?bg:T.surface,opacity:pressed?0.86:1},
+        ]}>
+          <View style={[s.graphNodeDot,{backgroundColor:color}]}/><Text style={s.graphNodeLabel} numberOfLines={1}>{node.label}</Text><Text style={s.graphNodeMeta} numberOfLines={1}>{node.zone}{node.vlan?` · V${node.vlan}`:''}</Text>
+        </Pressable>;
+      })}
     </View>
-    <Text style={s.micro}>ENDPOINTS BY TRUST ZONE</Text><View style={s.hostList}>{hosts.map(h=>{const danger=h.role==='attacker'||h.zone==='GUEST';const service=['SERVER','PUBLIC','MANAGEMENT'].includes(h.zone);const color=danger?T.coral:service?T.violet:T.mint;const bg=danger?T.coralSoft:service?T.violetSoft:T.mintSoft;return <View key={h.id} style={[s.hostRow,danger&&incidentMode&&{borderColor:T.coral+'66'}]}><View style={[s.hostIcon,{backgroundColor:bg}]}><Icon name={danger?'alert-triangle':'monitor'} size={15} color={color}/></View><View style={{flex:1}}><Text style={s.hostName}>{h.label}</Text><Text style={s.hostMeta}>{h.ip} · {h.zone} · {h.trust||'unknown'}</Text></View>{!!h.vlan&&<View style={[s.vlanPill,{backgroundColor:bg}]}><Text style={[s.vlanText,{color}]}>VLAN {h.vlan}</Text></View>}</View>})}</View>
+
+    <View style={s.graphLegend}>
+      {[['Observed','solid',T.mint],['Known lab','dashed',T.blue],['Inferred','dotted',T.faint]].map(([label,style,color])=><View key={String(label)} style={s.graphLegendItem}><View style={[s.graphLegendLine,{borderTopColor:String(color),borderStyle:style as any}]}/><Text style={s.graphLegendText}>{label}</Text></View>)}
+    </View>
+
+    {selectedNode&&<View style={s.assetInspector}>
+      <View style={s.assetInspectorHead}><View style={{flex:1}}><Text style={s.micro}>SELECTED ASSET</Text><Text style={s.assetTitle}>{selectedNode.label}</Text><Text style={s.assetMeta}>{selectedNode.ip||selectedNode.managementIp||'No IP'} · {selectedNode.zone} · {selectedNode.trustTier}</Text></View>{selectedNode.critical&&<View style={[s.badge,{backgroundColor:T.violetSoft}]}><Icon name="shield" size={12} color={T.violet}/><Text style={[s.sectionAction,{color:T.violet}]}>PROTECTED</Text></View>}</View>
+      <View style={s.assetFacts}><View style={s.assetFact}><Text style={s.assetFactLabel}>TYPE</Text><Text style={s.assetFactValue}>{selectedNode.assetType}</Text></View><View style={s.assetFact}><Text style={s.assetFactLabel}>INTERFACE</Text><Text style={s.assetFactValue}>{selectedNode.interface||'n/a'}</Text></View><View style={s.assetFact}><Text style={s.assetFactLabel}>TRUST</Text><Text style={s.assetFactValue}>{selectedNode.trustTier}</Text></View></View>
+      <View style={s.graphControls}><Pressable onPress={()=>setMode('neighbors')} style={[s.graphControl,mode==='neighbors'&&{backgroundColor:T.mintSoft,borderColor:T.mint+'55'}]}><Icon name="share-2" size={12} color={T.mint}/><Text style={s.graphControlText}>Neighbors</Text></Pressable><Pressable onPress={()=>{setPathTarget(selectedNode.label==='SERVER'?'ATTACKER-PC':'SERVER');setMode('path');}} style={[s.graphControl,mode==='path'&&{backgroundColor:T.violetSoft,borderColor:T.violet+'55'}]}><Icon name="git-branch" size={12} color={T.violet}/><Text style={s.graphControlText}>{selectedNode.label==='SERVER'?'Path to ATTACKER':'Path to SERVER'}</Text></Pressable><Pressable onPress={()=>setMode('blast')} style={[s.graphControl,mode==='blast'&&{backgroundColor:T.amberSoft,borderColor:T.amber+'55'}]}><Icon name="radio" size={12} color={T.amber}/><Text style={s.graphControlText}>Blast radius</Text></Pressable></View>
+      <View style={s.graphInsight}><Icon name="info" size={13} color={T.blue}/><Text style={s.graphInsightText}>{modeText}</Text></View>
+    </View>}
+  </View>;
+}
+
+function Fabric({topology,digitalTwin,incidentMode,setIncidentMode,intent}:{topology:NetworkTopology|null;digitalTwin:DigitalTwin|null;incidentMode:boolean;setIncidentMode:(v:boolean)=>void;intent:TwinIntent}) {
+  const {T,s}=useTheme(); const hosts=topology?.nodes.filter(n=>n.kind==='host')||[];
+  return <View style={s.page}>
+    <SectionHead eyebrow="FABRIC" title="Interactive digital twin" action={<Pressable onPress={()=>setIncidentMode(!incidentMode)} style={s.modeButton}><Icon name="zap" size={12} color={incidentMode?T.coral:T.text}/><Text style={[s.modeText,incidentMode&&{color:T.coral}]}>{incidentMode?'Incident focus':'Trace mode'}</Text></Pressable>}/>
+    <TwinSummary digitalTwin={digitalTwin}/>
+    <InteractiveTwinGraph digitalTwin={digitalTwin} intent={intent}/>
+    <Text style={s.micro}>ENDPOINT INVENTORY</Text><View style={s.hostList}>{hosts.map(h=>{const danger=h.role==='attacker'||h.zone==='GUEST';const service=['SERVER','PUBLIC','MANAGEMENT'].includes(h.zone);const color=danger?T.coral:service?T.violet:T.mint;const bg=danger?T.coralSoft:service?T.violetSoft:T.mintSoft;return <View key={h.id} style={[s.hostRow,danger&&incidentMode&&{borderColor:T.coral+'66'}]}><View style={[s.hostIcon,{backgroundColor:bg}]}><Icon name={danger?'alert-triangle':'monitor'} size={15} color={color}/></View><View style={{flex:1}}><Text style={s.hostName}>{h.label}</Text><Text style={s.hostMeta}>{h.ip} · {h.zone} · {h.trust||'unknown'}</Text></View>{!!h.vlan&&<View style={[s.vlanPill,{backgroundColor:bg}]}><Text style={[s.vlanText,{color}]}>VLAN {h.vlan}</Text></View>}</View>})}</View>
   </View>;
 }
 
@@ -255,6 +454,12 @@ function IncidentWorkspace({item,onCreatePlan,onClose}:{item:IncidentCase;onCrea
   return <View style={s.caseCard}>
     <View style={s.caseHead}><View style={{flex:1}}><Text style={s.caseKicker}>{item.severity.toUpperCase()} INCIDENT</Text><Text style={s.caseTitle}>{item.title}</Text></View><View style={s.caseState}><Text style={s.caseStateText}>{item.status.toUpperCase()}</Text></View></View>
     <Text style={s.caseAssessment}>{item.assessment}</Text>
+    {item.autopilot?.autoOpened&&<View style={s.autopilotCard}>
+      <View style={s.autopilotHead}><View style={s.autopilotIcon}><Icon name="zap" size={14} color={T.violet}/></View><View style={{flex:1}}><Text style={s.autopilotKicker}>INCIDENT AUTOPILOT</Text><Text style={s.autopilotTitle}>Investigation prepared automatically</Text></View><View style={[s.badge,{backgroundColor:T.mintSoft}]}><Text style={[s.sectionAction,{color:T.mint}]}>ASSISTIVE</Text></View></View>
+      <Text style={s.autopilotText}>{item.autopilot.reason}</Text>
+      {!!item.autopilot.recentChanges?.length&&<View style={s.autopilotChanges}><Text style={s.micro}>RECENT CONTEXT</Text>{item.autopilot.recentChanges.slice(0,3).map(change=><View key={change.id} style={s.autopilotChange}><View style={[s.statusDot,{backgroundColor:severityColor(T,change.severity)}]}/><Text style={s.autopilotChangeText}>{change.title}</Text></View>)}</View>}
+      <View style={s.autopilotGuard}><Icon name="user-check" size={12} color={T.mint}/><Text style={s.autopilotGuardText}>Autopilot may collect evidence and prepare next steps. Approval and execution remain human-controlled.</Text></View>
+    </View>}
     <Text style={s.micro}>EVIDENCE</Text><View style={s.evidenceList}>{item.evidence.map((e,i)=><View key={e.label+i} style={s.evidenceRow}><View style={s.evidenceRail}><View style={[s.evidenceDot,{backgroundColor:e.certainty==='observed'?T.mint:e.certainty==='heuristic'?T.violet:T.faint}]}/>{i<item.evidence.length-1&&<View style={s.evidenceStem}/>}</View><View style={{flex:1}}><Text style={s.evidenceLabel}>{e.label}</Text><Text style={s.evidenceValue}>{e.value}</Text><Text style={s.evidenceSource}>{e.source} · {e.certainty}</Text></View></View>)}</View>
     <Text style={s.micro}>VERIFICATION PATH</Text><View style={s.pathRow}>{item.path.map((p,i)=><React.Fragment key={p.label+i}><View style={s.pathNode}><View style={[s.pathIcon,{backgroundColor:p.kind==='source'?T.coralSoft:p.kind==='fabric'?T.mintSoft:T.violetSoft}]}><Icon name={p.kind==='source'?'alert-triangle':p.kind==='fabric'?'cpu':'shield'} size={13} color={p.kind==='source'?T.coral:p.kind==='fabric'?T.mint:T.violet}/></View><Text style={s.pathLabel}>{p.label}</Text><Text style={s.pathCert}>{p.certainty}</Text></View>{i<item.path.length-1&&<Icon name="arrow-right" size={12} color={T.faint}/>}</React.Fragment>)}</View>
     <Text style={[s.micro,{marginTop:13}]}>SAFE NEXT ACTIONS</Text>{item.recommendations.map(r=><Pressable key={r.kind} onPress={()=>onCreatePlan(r.kind,item.id)} style={s.recommendation}><View style={s.recommendNo}><Text style={s.recommendNoText}>{r.priority}</Text></View><Text style={s.recommendText}>{r.label}</Text><Icon name="arrow-up-right" size={13} color={T.violet}/></Pressable>)}
@@ -284,10 +489,10 @@ function PlanCard({a,onDecide,onSimulate,onApplied,onVerify,onRollback}:{a:Defen
 function Defend({security,cases,actions,onCreatePlan,onDecide,onOpenIncident,onCloseIncident,onSimulate,onApplied,onVerify,onRollback}:{security:SecurityAnalysis|null;cases:IncidentCase[];actions:DefensiveAction[];onCreatePlan:(k:string,c?:string)=>void;onDecide:(id:string,a:boolean)=>void;onOpenIncident:(id:string)=>void;onCloseIncident:(id:string)=>void;onSimulate:(id:string)=>void;onApplied:(id:string)=>void;onVerify:(id:string)=>void;onRollback:(id:string)=>void}) {
   const {T,s}=useTheme(); const posture=security?.posture||'normal'; const active=cases.find(x=>x.status!=='closed')||cases[0];
   return <View style={s.page}>
-    <SectionHead eyebrow="DEFEND" title="Incident response"/>
+    <SectionHead eyebrow="DEFEND" title="Incident response" action={<View style={[s.badge,{backgroundColor:T.violetSoft}]}><Icon name="zap" size={12} color={T.violet}/><Text style={[s.sectionAction,{color:T.violet}]}>AUTOPILOT ON</Text></View>}/>
     <LinearGradient colors={posture==='critical'?['#3B1722','#70283D']:posture==='warning'?['#332816','#665029']:['#0E3229','#17624E']} style={s.posture}><Text style={s.postureKicker}>CURRENT SECURITY POSTURE</Text><Text style={s.postureTitle}>{posture.toUpperCase()}</Text><Text style={s.postureText}>{security?.alertCount||0} active signals · {security?.criticalCount||0} critical · {security?.hostCount||0} observed hosts</Text></LinearGradient>
     {active&&<><SectionHead eyebrow="INCIDENT WORKSPACE" title={active.status==='closed'?'Latest investigation':'Investigation in progress'}/><IncidentWorkspace item={active} onCreatePlan={onCreatePlan} onClose={onCloseIncident}/></>}
-    <SectionHead eyebrow="DETECTION FEED" title="Active signals"/><View style={s.card}>{(security?.alerts||[]).length?security!.alerts.map((a,i)=><View key={a.id} style={[s.alertRow,i<(security?.alerts.length||0)-1&&s.divider]}><View style={[s.alertIcon,{backgroundColor:a.severity==='critical'?T.coralSoft:T.amberSoft}]}><Icon name={a.severity==='critical'?'alert-octagon':'alert-triangle'} size={16} color={a.severity==='critical'?T.coral:T.amber}/></View><View style={{flex:1}}><View style={s.alertTitleRow}><Text style={s.alertTitle}>{a.title}</Text><Text style={[s.alertSeverity,{color:a.severity==='critical'?T.coral:T.amber}]}>{a.severity.toUpperCase()}</Text></View><Text style={s.alertText}>{a.detail}</Text><Pressable onPress={()=>onOpenIncident(a.id)} style={s.investigate}><Icon name="search" size={12} color={T.violet}/><Text style={s.investigateText}>Investigate with NEXUS</Text></Pressable></View></View>):<Text style={s.muted}>Detection feed is quiet.</Text>}</View>
+    <SectionHead eyebrow="DETECTION FEED" title="Active signals"/><View style={s.card}>{(security?.alerts||[]).length?security!.alerts.map((a,i)=><View key={a.id} style={[s.alertRow,i<(security?.alerts.length||0)-1&&s.divider]}><View style={[s.alertIcon,{backgroundColor:a.severity==='critical'?T.coralSoft:T.amberSoft}]}><Icon name={a.severity==='critical'?'alert-octagon':'alert-triangle'} size={16} color={a.severity==='critical'?T.coral:T.amber}/></View><View style={{flex:1}}><View style={s.alertTitleRow}><Text style={s.alertTitle}>{a.title}</Text><Text style={[s.alertSeverity,{color:a.severity==='critical'?T.coral:T.amber}]}>{a.severity.toUpperCase()}</Text></View><Text style={s.alertText}>{a.detail}</Text><Pressable onPress={()=>onOpenIncident(a.id)} style={s.investigate}><Icon name={cases.some(item=>item.alertId===a.id&&item.status!=='closed')?'zap':'search'} size={12} color={T.violet}/><Text style={s.investigateText}>{cases.some(item=>item.alertId===a.id&&item.status!=='closed')?'Open prepared workspace':'Investigate with NEXUS'}</Text></Pressable></View></View>):<Text style={s.muted}>Detection feed is quiet.</Text>}</View>
     <SectionHead eyebrow="VERIFIED ACTION LOOP" title="Human-approved response"/>
     {actions.length?<View style={s.planList}>{actions.slice(0,4).map(a=><PlanCard key={a.id} a={a} onDecide={onDecide} onSimulate={onSimulate} onApplied={onApplied} onVerify={onVerify} onRollback={onRollback}/>)}</View>:<View style={s.cardFlat}><Text style={s.changeTitle}>No response plan yet</Text><Text style={s.changeDetail}>Open an incident and select a safe next action. NEXUS will prepare commands, rollback, simulation and live verification steps.</Text></View>}
   </View>;
@@ -298,22 +503,29 @@ function AnswerSections({text}:{text:string}) {
   return <View style={s.answerSections}>{sections.map((part,i)=>{const risk=part.label==='RISK';const confidence=part.label==='CONFIDENCE';const color=risk?T.coral:confidence?T.blue:T.violet;return <View key={part.label+i} style={[s.answerSection,risk&&{borderColor:T.coral+'55'},confidence&&{borderColor:T.blue+'55'}]}><View style={s.answerSectionHead}><View style={[s.answerSectionIcon,{backgroundColor:risk?T.coralSoft:confidence?T.blueSoft:T.violetSoft}]}><Icon name={icons[part.label]||'command'} size={13} color={color}/></View><Text style={[s.answerSectionLabel,{color}]}>{part.label}</Text></View><Text style={s.answerSectionText}>{part.body}</Text></View>})}</View>;
 }
 
-function Agent({live,serverHealth,busy,prompt,setPrompt,run,onSubmit}:{live:boolean;serverHealth:Health|null;busy:boolean;prompt:string;setPrompt:(v:string)=>void;run:AgentRun|null;onSubmit:()=>void}) {
+function Agent({live,serverHealth,busy,prompt,setPrompt,run,onSubmit,onAction}:{live:boolean;serverHealth:Health|null;busy:boolean;prompt:string;setPrompt:(v:string)=>void;run:AgentRun|null;onSubmit:()=>void;onAction:(action:NonNullable<AgentRun['actions']>[number])=>void}) {
   const {T,s}=useTheme(); const [trace,setTrace]=useState(false); const working=!!run&&['thinking','resuming'].includes(run.status);
   const quick=['Review my network health','Can ATTACKER-PC reach SERVER?','What is connected to CORE-SW?','Show the blast radius of CORE-SW'];
+  const tone=(value:string)=>value==='danger'?T.coral:value==='amber'?T.amber:value==='mint'?T.mint:value==='violet'?T.violet:T.blue;
   return <View style={s.page}>
     <SectionHead eyebrow="NEXUS AI" title="Topology-aware assistant" action={<View style={[s.contextPill,{backgroundColor:live?T.mintSoft:T.surface2}]}><View style={[s.statusDot,{backgroundColor:live?T.mint:T.faint}]}/><Text style={s.contextText}>{live?'LIVE CONTEXT':'NO CONTEXT'}</Text></View>}/>
-    <LinearGradient colors={['#171B2D','#29234B','#403176']} style={s.aiHero}><View style={s.aiOrb}><View style={s.aiOrbInner}><Text style={s.aiOrbText}>N</Text></View></View><Text style={s.aiTitle}>Ask the network,{"\n"}not just the model.</Text><Text style={s.aiText}>NEXUS can combine controller observations with digital-twin path, adjacency and blast-radius analysis — while labelling what is verified and what is not.</Text><View style={s.modelRow}><Icon name="cpu" size={12} color="#C9C3FF"/><Text style={s.modelText}>{serverHealth?.model||'Local model'} · {serverHealth?.modelReady?'ready':'auto fallback'}</Text></View></LinearGradient>
+    <LinearGradient colors={['#171B2D','#29234B','#403176']} style={s.aiHero}><View style={s.aiOrb}><View style={s.aiOrbInner}><Text style={s.aiOrbText}>N</Text></View></View><Text style={s.aiTitle}>Ask the network,{"\n"}not just the model.</Text><Text style={s.aiText}>NEXUS preloads the right graph tool for common path, adjacency and blast-radius questions, then turns the result into evidence and operator actions.</Text><View style={s.modelRow}><Icon name="cpu" size={12} color="#C9C3FF"/><Text style={s.modelText}>{serverHealth?.model||'Local model'} · {serverHealth?.modelReady?'ready':'auto fallback'}</Text></View></LinearGradient>
     <View style={s.composer}><TextInput value={prompt} onChangeText={setPrompt} multiline placeholder="Ask about health, reachability, paths, blast radius…" placeholderTextColor={T.faint} style={s.composerInput}/><Pressable onPress={onSubmit} disabled={busy||prompt.trim().length<3} style={[s.send,(busy||prompt.trim().length<3)&&{opacity:.45}]}><Icon name={busy?'loader':'arrow-up'} size={17} color={T.bg}/></Pressable></View>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chips}>{quick.map(q=><Pressable key={q} onPress={()=>setPrompt(q)} style={s.chip}><Text style={s.chipText}>{q}</Text></Pressable>)}</ScrollView>
-    {run?<View style={s.runCard}><View style={s.runHead}><View style={{flex:1}}><Text style={s.runLabel}>CURRENT INVESTIGATION</Text><Text style={s.runPrompt}>{run.prompt}</Text></View><View style={[s.runState,{backgroundColor:run.status==='completed'?T.mintSoft:run.status==='failed'?T.coralSoft:T.violetSoft}]}><Text style={[s.runStateText,{color:run.status==='completed'?T.mint:run.status==='failed'?T.coral:T.violet}]}>{run.status.toUpperCase()}</Text></View></View>
-      {working&&<View style={s.thinking}><View style={s.thinkingDot}/><Text style={s.thinkingText}>Correlating live evidence and digital-twin context…</Text></View>}
+    {run?<View style={s.runCard}>
+      <View style={s.runHead}><View style={{flex:1}}><Text style={s.runLabel}>CURRENT INVESTIGATION</Text><Text style={s.runPrompt}>{run.prompt}</Text></View><View style={[s.runState,{backgroundColor:run.status==='completed'?T.mintSoft:run.status==='failed'?T.coralSoft:T.violetSoft}]}><Text style={[s.runStateText,{color:run.status==='completed'?T.mint:run.status==='failed'?T.coral:T.violet}]}>{run.status.toUpperCase()}</Text></View></View>
+      {working&&<View style={s.thinking}><View style={s.thinkingDot}/><Text style={s.thinkingText}>Selecting tools and correlating live evidence…</Text></View>}
       {!!run.evidence?.length&&<View style={s.evidenceSummary}><Text style={s.micro}>EVIDENCE USED</Text>{run.evidence.slice(-5).map((e,i)=><View key={e.tool+i} style={s.agentEvidence}><View style={s.checkBox}><Icon name="check" size={10} color={T.mint}/></View><Text style={s.agentEvidenceText}>{e.summary}</Text></View>)}</View>}
       {!!run.events.length&&<Pressable onPress={()=>setTrace(!trace)} style={s.traceToggle}><View style={{flexDirection:'row',alignItems:'center',gap:6}}><Icon name="activity" size={13} color={T.violet}/><Text style={s.traceToggleText}>{trace?'Hide':'Show'} investigation trace</Text></View><Icon name={trace?'chevron-up':'chevron-down'} size={14} color={T.muted}/></Pressable>}
       {trace&&<View style={{marginTop:9}}>{run.events.map((e,i)=><View key={e.id} style={s.traceRow}><View style={s.traceRail}><View style={[s.traceDot,{backgroundColor:e.kind==='error'?T.coral:e.kind==='success'||e.kind==='final'?T.mint:T.violet}]}/>{i<run.events.length-1&&<View style={s.traceStem}/>}</View><View style={{flex:1}}><Text style={s.traceTitle}>{e.title}</Text>{!!e.detail&&<Text style={s.traceDetail}>{cleanMarkup(e.detail)}</Text>}</View></View>)}</View>}
-      {!!run.answer&&<View style={s.answer}><View style={s.answerHead}><View style={s.answerLogo}><Text style={s.answerLogoText}>N</Text></View><View><Text style={s.answerKicker}>NEXUS ASSESSMENT</Text><Text style={s.answerMeta}>Evidence-aware · digital-twin assisted</Text></View></View><AnswerSections text={run.answer}/>{!!run.followUps?.length&&<View style={s.followups}><Text style={s.micro}>CONTINUE INVESTIGATION</Text>{run.followUps.map(q=><Pressable key={q} onPress={()=>setPrompt(q)} style={s.followup}><Text style={s.followupText}>{q}</Text><Icon name="arrow-up-right" size={13} color={T.violet}/></Pressable>)}</View>}</View>}
+      {!!run.answer&&<View style={s.answer}>
+        <View style={s.answerHead}><View style={s.answerLogo}><Text style={s.answerLogoText}>N</Text></View><View><Text style={s.answerKicker}>NEXUS ASSESSMENT</Text><Text style={s.answerMeta}>Evidence-aware · digital-twin assisted</Text></View></View>
+        <AnswerSections text={run.answer}/>
+        {!!run.actions?.length&&<View style={s.actionCards}><Text style={s.micro}>OPERATOR ACTIONS</Text>{run.actions.map(action=>{const color=tone(action.tone);return <Pressable key={action.id} onPress={()=>onAction(action)} style={[s.actionCard,{borderColor:color+'55'}]}><View style={[s.actionCardIcon,{backgroundColor:color+'1A'}]}><Icon name={(action.icon||'arrow-up-right') as IconName} size={14} color={color}/></View><View style={{flex:1}}><Text style={s.actionCardTitle}>{action.label}</Text><Text style={s.actionCardText}>{action.description}</Text></View><Icon name="chevron-right" size={14} color={T.faint}/></Pressable>})}</View>}
+        {!!run.followUps?.length&&<View style={s.followups}><Text style={s.micro}>CONTINUE INVESTIGATION</Text>{run.followUps.map(q=><Pressable key={q} onPress={()=>setPrompt(q)} style={s.followup}><Text style={s.followupText}>{q}</Text><Icon name="arrow-up-right" size={13} color={T.violet}/></Pressable>)}</View>}
+      </View>}
       {!!run.error&&<View style={[s.cardFlat,{marginTop:10,borderColor:T.coral+'55'}]}><Text style={[s.changeTitle,{color:T.coral}]}>Investigation interrupted</Text><Text style={s.changeDetail}>{run.error}</Text></View>}
-    </View>:<View style={s.aiEmpty}><View style={s.aiEmptyIcon}><Icon name="command" size={22} color={T.violet}/></View><Text style={s.aiEmptyTitle}>Ready for a network question</Text><Text style={s.aiEmptyText}>Try a path, connection or blast-radius question. NEXUS will use the digital twin when the evidence calls for it.</Text></View>}
+    </View>:<View style={s.aiEmpty}><View style={s.aiEmptyIcon}><Icon name="command" size={22} color={T.violet}/></View><Text style={s.aiEmptyTitle}>Ready for a network question</Text><Text style={s.aiEmptyText}>Try a path, connection or blast-radius question. NEXUS will automatically select the matching digital-twin tool when the request is clear.</Text></View>}
   </View>;
 }
 
@@ -334,6 +546,25 @@ function Experience(props:Props) {
   const {T,s}=useTheme();
   const {page,setPage,live,network,topology,digitalTwin,security,serverHealth,actions,incidentCases,changes,themeMode,onToggleTheme,incidentMode,setIncidentMode,busy,prompt,setPrompt,run,editEndpoint,setEditEndpoint,editPair,setEditPair,onConnect,onRefresh,onSubmit,onCreatePlan,onDecidePlan,onOpenIncident,onCloseIncident,onSimulatePlan,onMarkPlanApplied,onVerifyPlan,onRollbackPlan,notice,clearNotice}=props;
   const scrollRef=useRef<ScrollView>(null);
+  const [twinIntent,setTwinIntent]=useState<TwinIntent>(null);
+
+  function handleAgentAction(action:NonNullable<AgentRun['actions']>[number]) {
+    if(action.type==='ask' && action.payload.prompt) {
+      setPrompt(action.payload.prompt);
+      setPage('agent');
+      return;
+    }
+    if(action.type==='open-incident' && action.payload.alertId) {
+      onOpenIncident(action.payload.alertId);
+      return;
+    }
+    const nonce=Date.now();
+    if(action.type==='focus-twin' && action.payload.asset) setTwinIntent({type:'focus',asset:action.payload.asset,nonce});
+    if(action.type==='show-blast-radius' && action.payload.asset) setTwinIntent({type:'blast',asset:action.payload.asset,nonce});
+    if(action.type==='show-path' && action.payload.source && action.payload.target) setTwinIntent({type:'path',source:action.payload.source,target:action.payload.target,nonce});
+    if(['focus-twin','show-blast-radius','show-path'].includes(action.type)) setPage('topology');
+  }
+
   useEffect(()=>{if(page!=='agent'||!run)return;const t=setTimeout(()=>scrollRef.current?.scrollToEnd({animated:true}),180);return()=>clearTimeout(t);},[page,run?.status,run?.answer,run?.events.length]);
   return <SafeAreaView style={s.root} edges={['top','bottom']}>
     <Header live={live} themeMode={themeMode} onToggleTheme={onToggleTheme} onConnect={()=>setPage('settings')} onRefresh={onRefresh}/>
@@ -341,9 +572,9 @@ function Experience(props:Props) {
     <ScrollView ref={scrollRef} style={s.scroll} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
       {page==='home'&&<Home live={live} network={network} topology={topology} security={security} changes={changes} digitalTwin={digitalTwin} setPage={setPage}/>}
       {page==='dashboard'&&<Overview network={network} topology={topology} security={security} changes={changes}/>}
-      {page==='topology'&&<Fabric topology={topology} digitalTwin={digitalTwin} incidentMode={incidentMode} setIncidentMode={setIncidentMode}/>}
+      {page==='topology'&&<Fabric topology={topology} digitalTwin={digitalTwin} incidentMode={incidentMode} setIncidentMode={setIncidentMode} intent={twinIntent}/>}
       {page==='security'&&<Defend security={security} cases={incidentCases} actions={actions} onCreatePlan={onCreatePlan} onDecide={onDecidePlan} onOpenIncident={onOpenIncident} onCloseIncident={onCloseIncident} onSimulate={onSimulatePlan} onApplied={onMarkPlanApplied} onVerify={onVerifyPlan} onRollback={onRollbackPlan}/>}
-      {page==='agent'&&<Agent live={live} serverHealth={serverHealth} busy={busy} prompt={prompt} setPrompt={setPrompt} run={run} onSubmit={onSubmit}/>}
+      {page==='agent'&&<Agent live={live} serverHealth={serverHealth} busy={busy} prompt={prompt} setPrompt={setPrompt} run={run} onSubmit={onSubmit} onAction={handleAgentAction}/>}
       {page==='settings'&&<Connect live={live} editEndpoint={editEndpoint} setEditEndpoint={setEditEndpoint} editPair={editPair} setEditPair={setEditPair} onConnect={onConnect} busy={busy} serverHealth={serverHealth}/>}
     </ScrollView>
     <View style={s.nav}>{nav.map(item=>{const active=page===item.id;return <Pressable key={item.id} onPress={()=>setPage(item.id)} style={s.navItem}><View style={[s.navIcon,active&&s.navIconActive]}><Icon name={item.icon} size={17} color={active?T.ink:T.muted}/></View><Text style={[s.navText,active&&s.navTextActive]}>{item.label}</Text></Pressable>})}</View>

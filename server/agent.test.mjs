@@ -77,3 +77,52 @@ test('network health questions produce a substantive evidence-based answer even 
   assert.equal(done.evidence.length >= 2, true);
   assert.equal(done.events.some(event => event.detail.includes('{"')), false);
 });
+
+
+test('graph questions preload the matching digital-twin tool and emit operator action cards', async () => {
+  const digitalTwin = {
+    async build() {
+      return {
+        nodes:[
+          { id:'attack', label:'ATTACKER-PC', zone:'GUEST', labThreatMarker:true },
+          { id:'core', label:'CORE-SW', zone:'CORE' },
+          { id:'server', label:'SERVER', zone:'SERVER', critical:true },
+        ],
+        links:[
+          { id:'a', source:'attack', target:'core', certainty:'observed' },
+          { id:'b', source:'core', target:'server', certainty:'observed' },
+        ],
+        zones:[{id:'guest',name:'GUEST'}],
+        confidence:{ policyEnforcement:'not-verified' },
+      };
+    },
+    async path(source,target) {
+      return {
+        found:true,
+        source,
+        target,
+        relationshipPath:true,
+        reachability:'not-verified',
+        certainty:'observed',
+        hops:[
+          { node:{label:'ATTACKER-PC'} },
+          { node:{label:'CORE-SW'} },
+          { node:{label:'SERVER'} },
+        ],
+        generatedAt:new Date().toISOString(),
+      };
+    },
+  };
+  const networkClient = {};
+  const fetcher = async () => ({ ok:true, status:200, json:async()=>({ message:{ role:'assistant', content:'任务已完成。' } }) });
+  const agent = createAgent({ root, model:'mock', fetcher, networkClient, digitalTwin });
+  const run = agent.start('Can ATTACKER-PC reach SERVER?');
+  const done = await wait(() => {
+    const current = agent.get(run.id);
+    return current.status === 'completed' ? current : null;
+  });
+  assert.match(done.answer, /Relationship path/i);
+  assert.match(done.answer, /not-verified/i);
+  assert.equal(done.evidence.some(item => item.tool === 'analyze_network_path'), true);
+  assert.equal(done.actions.some(item => item.type === 'show-path'), true);
+});

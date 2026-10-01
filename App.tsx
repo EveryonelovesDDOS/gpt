@@ -363,7 +363,7 @@ function AppContent() {
   const header = <View style={[s.header,themeMode==='dark'&&{backgroundColor:'rgba(12,19,33,.96)',borderBottomColor:'#263247'}]}>
     <View style={s.brand}>
       <LinearGradient colors={[P.mint,P.lilac]} start={{x:0,y:0}} end={{x:1,y:1}} style={s.logo}><Text style={s.logoText}>N</Text></LinearGradient>
-      <View><Text style={[s.brandName,themeMode==='dark'&&{color:'#F7FAFF'}]}>NEXUS</Text><Text style={[s.brandSub,themeMode==='dark'&&{color:'#94A3B8'}]}>V10 · DIGITAL TWIN · VERIFIED RESPONSE</Text></View>
+      <View><Text style={[s.brandName,themeMode==='dark'&&{color:'#F7FAFF'}]}>NEXUS</Text><Text style={[s.brandSub,themeMode==='dark'&&{color:'#94A3B8'}]}>V11 · INTERACTIVE TWIN · INCIDENT AUTOPILOT</Text></View>
     </View>
     {desktop && <AnimatedTabs items={nav} activeId={page} onSelect={(id)=>setPage(id as Page)} width={94} />}
     <View style={s.headerRight}>

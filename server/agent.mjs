@@ -91,16 +91,108 @@ function summarizeTool(name, result) {
   return 'Tool completed successfully.';
 }
 
-function preloadTools(prompt) {
+function mentionedAssets(prompt) {
+  const known=['CORE-SW','EDGE-RTR','ATTACKER-PC','SERVER','ADMIN-PC','FINANCE-PC','STAFF-PC','PUBLIC-WEB'];
+  const upper=prompt.toUpperCase();
+  return known.filter(name=>upper.includes(name));
+}
+
+function preloadPlan(prompt) {
   const p = prompt.toLowerCase();
-  if (/health|healthy|status|健康|状态/.test(p)) return ['get_network_health','get_security_analysis'];
-  if (/attacker|intruder|guest|where is|位于|攻击/.test(p)) return ['get_network_hosts','get_security_analysis'];
-  if (/device|inventory|discovered|设备|清单/.test(p)) return ['get_network_devices'];
-  if (/alert|security|risk|threat|安全|风险|告警/.test(p)) return ['get_security_analysis','get_network_topology'];
-  if (/blast|impact|affected|dependency|radius|影响|波及/.test(p)) return ['get_network_digital_twin','get_security_analysis'];
-  if (/connected to|connects to|neighbor|attached|what is connected|连接到|相连/.test(p)) return ['get_network_digital_twin','get_network_topology'];
-  if (/topology|fabric|vlan|segment|reach|reachable|path|拓扑|网络|路径|可达/.test(p)) return ['get_network_digital_twin','get_security_analysis'];
+  const assets=mentionedAssets(prompt);
+  if (/blast|impact|affected|dependency|radius|影响|波及/.test(p) && assets[0]) {
+    return [
+      { name:'get_network_digital_twin', args:{} },
+      { name:'get_blast_radius', args:{ asset:assets[0], depth:3 } },
+    ];
+  }
+  if (/connected to|connects to|neighbor|attached|what is connected|连接到|相连/.test(p) && assets[0]) {
+    return [
+      { name:'get_network_digital_twin', args:{} },
+      { name:'get_connected_assets', args:{ asset:assets[0] } },
+    ];
+  }
+  if (/reach|reachable|path|can .* reach|可达|路径/.test(p) && assets.length >= 2) {
+    return [
+      { name:'get_network_digital_twin', args:{} },
+      { name:'analyze_network_path', args:{ source:assets[0], target:assets[1] } },
+    ];
+  }
+  if (/health|healthy|status|健康|状态/.test(p)) return [{name:'get_network_health',args:{}},{name:'get_security_analysis',args:{}}];
+  if (/attacker|intruder|guest|where is|位于|攻击/.test(p)) return [{name:'get_network_hosts',args:{}},{name:'get_security_analysis',args:{}}];
+  if (/device|inventory|discovered|设备|清单/.test(p)) return [{name:'get_network_devices',args:{}}];
+  if (/alert|security|risk|threat|安全|风险|告警/.test(p)) return [{name:'get_security_analysis',args:{}},{name:'get_network_topology',args:{}}];
+  if (/topology|fabric|vlan|segment|拓扑|网络/.test(p)) return [{name:'get_network_digital_twin',args:{}},{name:'get_security_analysis',args:{}}];
   return [];
+}
+
+function buildActionCards(run) {
+  const cards=[];
+  const security=run.context.get_security_analysis;
+  const path=run.context.analyze_network_path;
+  const blast=run.context.get_blast_radius;
+  const connected=run.context.get_connected_assets;
+  const twin=run.context.get_network_digital_twin;
+  const topAlert=security?.alerts?.find?.(alert=>['critical','high'].includes(alert.severity)) || security?.alerts?.[0];
+
+  if (topAlert) cards.push({
+    id:`incident:${topAlert.id}`,
+    type:'open-incident',
+    label:'Open incident workspace',
+    description:`Investigate ${topAlert.title} with evidence and human-controlled response.`,
+    icon:'shield',
+    tone:'danger',
+    payload:{ alertId:topAlert.id },
+  });
+  if (path?.found) cards.push({
+    id:`path:${path.source}:${path.target}`,
+    type:'show-path',
+    label:'Show path on Digital Twin',
+    description:`${path.source} → ${path.target} · reachability ${path.reachability || 'unknown'}.`,
+    icon:'git-branch',
+    tone:'violet',
+    payload:{ source:path.source, target:path.target },
+  });
+  if (blast?.found) cards.push({
+    id:`blast:${blast.asset?.label || blast.asset}`,
+    type:'show-blast-radius',
+    label:'Open blast radius',
+    description:`${blast.affected?.length || 0} graph-adjacent assets · ${blast.criticalAssets?.length || 0} critical.`,
+    icon:'radio',
+    tone:'amber',
+    payload:{ asset:blast.asset?.label || blast.asset },
+  });
+  if (connected?.found) cards.push({
+    id:`focus:${connected.asset?.label}`,
+    type:'focus-twin',
+    label:`Focus ${connected.asset?.label}`,
+    description:`${connected.neighbors?.length || 0} direct digital-twin relationships.`,
+    icon:'crosshair',
+    tone:'mint',
+    payload:{ asset:connected.asset?.label },
+  });
+  if (!cards.some(card=>card.type==='focus-twin') && twin?.nodes?.length) {
+    const marker=twin.nodes.find(node=>node.labThreatMarker);
+    if(marker) cards.push({
+      id:`focus:${marker.label}`,
+      type:'focus-twin',
+      label:`Focus ${marker.label}`,
+      description:`${marker.zone} · ${marker.trustTier} · inspect graph relationships.`,
+      icon:'crosshair',
+      tone:'mint',
+      payload:{ asset:marker.label },
+    });
+  }
+  cards.push({
+    id:'ask:changes',
+    type:'ask',
+    label:'What changed recently?',
+    description:'Continue the investigation with live change context.',
+    icon:'activity',
+    tone:'neutral',
+    payload:{ prompt:'What changed recently in this network, and does it matter for the current investigation?' },
+  });
+  return cards.slice(0,3);
 }
 
 function isGenericFinal(value) {
@@ -121,6 +213,91 @@ function synthesizeFinal(prompt, context) {
   const hosts = context.get_network_hosts;
   const devices = context.get_network_devices;
   const topology = context.get_network_topology;
+  const twin = context.get_network_digital_twin;
+  const pathAnalysis = context.analyze_network_path;
+  const blastRadius = context.get_blast_radius;
+  const connected = context.get_connected_assets;
+
+  if (pathAnalysis) {
+    const hopText=(pathAnalysis.hops || []).map(h=>h.node?.label).filter(Boolean).join(' → ');
+    return `OBSERVED
+- Relationship path: ${pathAnalysis.found ? (hopText || pathAnalysis.source + ' → ' + pathAnalysis.target) : 'not found in the current digital twin'}.
+- Relationship certainty: ${pathAnalysis.certainty || 'unknown'}.
+- IP reachability: ${pathAnalysis.reachability || 'not-verified'}.
+
+INFERRED
+A digital-twin relationship is not the same as verified end-to-end traffic reachability.
+
+RISK
+Treat unverified forwarding or isolation as a review item, especially around protected zones.
+
+NEXT CHECKS
+1. Verify routing and policy enforcement where available.
+2. Confirm the source and target VLAN assignments.
+3. Refresh the twin after topology changes.
+
+CONFIDENCE
+Medium — relationship evidence is available, while forwarding policy is only partially observable.`;
+  }
+
+  if (blastRadius) {
+    const critical=(blastRadius.criticalAssets || []).map(a=>a.label).join(', ') || 'none identified';
+    return `OBSERVED
+- ${blastRadius.affected?.length || 0} graph-adjacent assets are within the selected depth.
+- Critical assets in that graph set: ${critical}.
+
+INFERRED
+This is structural impact context from the digital twin, not a forwarding verdict.
+
+RISK
+Critical assets in the highlighted set deserve priority verification.
+
+NEXT CHECKS
+1. Inspect highlighted critical assets.
+2. Verify segmentation and recent network changes.
+
+CONFIDENCE
+Medium — based on certainty-labelled graph relationships.`;
+  }
+
+  if (connected) {
+    const neighbors=(connected.neighbors || []).map(n=>`- ${n.label}: ${n.zone} via ${n.via} (${n.certainty})`).join('\n') || '- No direct neighbors are represented.';
+    return `OBSERVED
+${neighbors}
+
+INFERRED
+These are direct relationships for ${connected.asset?.label || 'the selected asset'} in the current digital twin.
+
+RISK
+A direct graph relationship does not itself prove IP reachability.
+
+NEXT CHECKS
+1. Review untrusted or protected neighbors.
+2. Verify the relationship certainty and VLAN context.
+
+CONFIDENCE
+High for the listed graph relationships; forwarding behavior remains separately verified.`;
+  }
+
+  if (twin && /topology|fabric|digital twin|network|拓扑|网络/.test(p)) {
+    return `OBSERVED
+- Digital twin contains ${twin.nodes?.length || 0} assets, ${twin.links?.length || 0} relationships, and ${twin.zones?.length || 0} trust zones.
+- Policy enforcement confidence: ${twin.confidence?.policyEnforcement || 'unknown'}.
+
+INFERRED
+The twin preserves certainty labels instead of treating every relationship as verified traffic flow.
+
+RISK
+Inferred links require separate verification.
+
+NEXT CHECKS
+1. Inspect a selected asset and its direct neighbors.
+2. Run path or impact analysis for the current incident.
+
+CONFIDENCE
+High for represented inventory; policy enforcement remains separately verified.`;
+  }
+
 
   if (health && /health|healthy|status|健康|状态/.test(p)) {
     const stable = health.allReachable;
@@ -293,11 +470,11 @@ export function createAgent({ root, model, ollama = 'http://127.0.0.1:11434', fe
 
   async function prime(run, messages) {
     if (!networkClient) return;
-    const names = preloadTools(run.prompt).slice(0,2);
-    for (const name of names) {
+    const plan = preloadPlan(run.prompt).slice(0,3);
+    for (const step of plan) {
       if (run.cancelled) return;
-      const result = await collect(run, name, {});
-      messages.splice(messages.length - 1, 0, { role:'system', content:`Preloaded live NEXUS observation from ${name}: ${result}` });
+      const result = await collect(run, step.name, step.args);
+      messages.splice(messages.length - 1, 0, { role:'system', content:`Preloaded live NEXUS observation from ${step.name}: ${result}` });
     }
   }
 
@@ -316,8 +493,9 @@ export function createAgent({ root, model, ollama = 'http://127.0.0.1:11434', fe
           run.followUps = [
             'Show me the evidence behind this assessment.',
             'What should I verify next?',
-            ...(run.context.get_security_analysis?.alertCount ? ['Open the highest-priority incident.'] : []),
+            ...(run.context.get_security_analysis?.alertCount ? ['Explain the highest-priority signal.'] : []),
           ].slice(0,3);
+          run.actions = buildActionCards(run);
           recentTurns.push({ prompt:run.prompt, answer:run.answer });
           if (recentTurns.length > 6) recentTurns.shift();
           run.status = 'completed';
@@ -364,6 +542,7 @@ export function createAgent({ root, model, ollama = 'http://127.0.0.1:11434', fe
       if (run.cancelled) return;
       run.answer = synthesizeFinal(run.prompt, run.context);
       run.followUps = ['Show me the evidence behind this assessment.','What should I verify next?'];
+      run.actions = buildActionCards(run);
       recentTurns.push({ prompt:run.prompt, answer:run.answer });
       if (recentTurns.length > 6) recentTurns.shift();
       run.status = 'completed';
@@ -398,7 +577,7 @@ export function createAgent({ root, model, ollama = 'http://127.0.0.1:11434', fe
     if ([...runs.values()].filter(x => ['thinking', 'approval'].includes(x.status)).length >= 2) throw new Error('A maximum of 2 agent runs can execute at once');
     const run = {
       id:randomUUID(), prompt:prompt.trim(), created:Date.now(), status:'thinking',
-      events:[], evidence:[], context:{}, answer:'', pending:null, cancelled:false, controller:new AbortController(),
+      events:[], evidence:[], context:{}, answer:'', followUps:[], actions:[], pending:null, cancelled:false, controller:new AbortController(),
     };
     runs.set(run.id, run);
     void startRun(run);
@@ -415,6 +594,7 @@ export function createAgent({ root, model, ollama = 'http://127.0.0.1:11434', fe
       evidence:run.evidence,
       answer:run.answer,
       followUps:run.followUps || [],
+      actions:run.actions || [],
       error:run.error,
       pending:run.pending ? { name:run.pending.name, path:run.pending.args.path, preview:run.pending.preview } : null,
     };

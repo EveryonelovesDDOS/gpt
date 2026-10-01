@@ -1,6 +1,15 @@
 export type EventKind = 'thinking' | 'tool' | 'success' | 'approval' | 'denied' | 'final' | 'error';
 export type AgentEvent = { id: string; kind: EventKind; title: string; detail: string; at: string };
 export type AgentEvidence = { tool: string; summary: string; at: string };
+export type AgentAction = {
+  id:string;
+  type:'open-incident'|'show-path'|'show-blast-radius'|'focus-twin'|'ask';
+  label:string;
+  description:string;
+  icon:string;
+  tone:'danger'|'violet'|'amber'|'mint'|'neutral';
+  payload:{ alertId?:string; source?:string; target?:string; asset?:string; prompt?:string };
+};
 export type AgentRun = {
   id: string;
   prompt: string;
@@ -9,6 +18,7 @@ export type AgentRun = {
   evidence?: AgentEvidence[];
   answer?: string;
   followUps?: string[];
+  actions?: AgentAction[];
   error?: string;
   pending?: { name: string; path: string; preview: string } | null;
 };
@@ -86,13 +96,31 @@ export type IncidentCase = {
   path: IncidentPathStep[];
   recommendations: IncidentRecommendation[];
   assessment: string;
+  alertStatus?: string;
+  autopilot?: {
+    mode:string;
+    autoOpened:boolean;
+    status:string;
+    reason:string;
+    preparedAt:string;
+    resolvedObservedAt?:string;
+    humanApprovalRequired:boolean;
+    recentChanges:{ id:string; at:string; title:string; severity:string; entity:string }[];
+  };
   linkedActionIds?: string[];
 };
 
 export type IncidentTimeline = {
-  current: IncidentFrame;
-  timeline: IncidentFrame[];
+  current: IncidentFrame & { autoOpenedCaseIds?:string[] };
+  timeline: (IncidentFrame & { autoOpenedCaseIds?:string[] })[];
   cases?: IncidentCase[];
+  autopilot?: {
+    mode:string;
+    enabled:boolean;
+    autoOpenSeverities:string[];
+    humanApprovalRequired:boolean;
+    note:string;
+  };
   generatedAt: string;
 };
 
