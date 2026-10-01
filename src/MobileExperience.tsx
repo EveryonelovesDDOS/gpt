@@ -605,9 +605,25 @@ const nav:{id:MobilePage;label:string;icon:IconName}[]=[
 
 function Experience(props:Props) {
   const {T,s}=useTheme();
-  const {page,setPage,live,network,topology,digitalTwin,security,serverHealth,actions,incidentCases,changes,themeMode,onToggleTheme,incidentMode,setIncidentMode,busy,prompt,setPrompt,run,editEndpoint,setEditEndpoint,editPair,setEditPair,onConnect,onRefresh,onSubmit,onCreatePlan,onDecidePlan,onOpenIncident,onCloseIncident,onSimulatePlan,onMarkPlanApplied,onVerifyPlan,onRollbackPlan,notice,clearNotice}=props;
+  const {page,setPage,live,network,topology,digitalTwin,demoScenario,demoPlaying,security,serverHealth,actions,incidentCases,changes,themeMode,onToggleTheme,incidentMode,setIncidentMode,busy,prompt,setPrompt,run,editEndpoint,setEditEndpoint,editPair,setEditPair,onConnect,onRefresh,onSubmit,onCreatePlan,onDecidePlan,onOpenIncident,onCloseIncident,onSimulatePlan,onMarkPlanApplied,onVerifyPlan,onRollbackPlan,onStartDemo,onAdvanceDemo,onPreviousDemo,onResetDemo,onJumpDemo,onPlayDemo,notice,clearNotice}=props;
   const scrollRef=useRef<ScrollView>(null);
   const [twinIntent,setTwinIntent]=useState<TwinIntent>(null);
+
+  function openDemoWorkspace() {
+    const current=demoScenario?.current;
+    if(!current) return;
+    if(current.id==='path-analysis') {
+      setTwinIntent({type:'path',source:'ATTACKER-PC',target:'SERVER',nonce:Date.now()});
+      setPage('topology');
+      return;
+    }
+    if(current.id==='threat-observed') {
+      setTwinIntent({type:'focus',asset:'ATTACKER-PC',nonce:Date.now()});
+      setPage('topology');
+      return;
+    }
+    setPage((current.page||'home') as MobilePage);
+  }
 
   function handleAgentAction(action:NonNullable<AgentRun['actions']>[number]) {
     if(action.type==='ask' && action.payload.prompt) {
@@ -628,14 +644,15 @@ function Experience(props:Props) {
 
   useEffect(()=>{if(page!=='agent'||!run)return;const t=setTimeout(()=>scrollRef.current?.scrollToEnd({animated:true}),180);return()=>clearTimeout(t);},[page,run?.status,run?.answer,run?.events.length]);
   return <SafeAreaView style={s.root} edges={['top','bottom']}>
-    <Header live={live} themeMode={themeMode} onToggleTheme={onToggleTheme} onConnect={()=>setPage('settings')} onRefresh={onRefresh}/>
+    <Header live={live} themeMode={themeMode} onToggleTheme={onToggleTheme} onConnect={()=>setPage('settings')} onRefresh={onRefresh} onDemo={()=>setPage('demo')}/>
     {!!notice&&<Pressable onPress={clearNotice} style={s.notice}><Icon name="info" size={13} color={T.amber}/><Text style={s.noticeText} numberOfLines={2}>{notice}</Text><Icon name="x" size={13} color={T.muted}/></Pressable>}
     <ScrollView ref={scrollRef} style={s.scroll} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
       {page==='home'&&<Home live={live} network={network} topology={topology} security={security} changes={changes} digitalTwin={digitalTwin} setPage={setPage}/>}
       {page==='dashboard'&&<Overview network={network} topology={topology} security={security} changes={changes}/>}
       {page==='topology'&&<Fabric topology={topology} digitalTwin={digitalTwin} incidentMode={incidentMode} setIncidentMode={setIncidentMode} intent={twinIntent}/>}
       {page==='security'&&<Defend security={security} cases={incidentCases} actions={actions} onCreatePlan={onCreatePlan} onDecide={onDecidePlan} onOpenIncident={onOpenIncident} onCloseIncident={onCloseIncident} onSimulate={onSimulatePlan} onApplied={onMarkPlanApplied} onVerify={onVerifyPlan} onRollback={onRollbackPlan}/>}
-      {page==='agent'&&<Agent live={live} serverHealth={serverHealth} busy={busy} prompt={prompt} setPrompt={setPrompt} run={run} onSubmit={onSubmit} onAction={handleAgentAction}/>}
+      {page==='agent'&&<Agent live={live} serverHealth={serverHealth} busy={busy} prompt={prompt} setPrompt={setPrompt} run={run} onSubmit={onSubmit} onAction={handleAgentAction}/>} 
+      {page==='demo'&&<DemoMode scenario={demoScenario} playing={demoPlaying} busy={busy} onStart={onStartDemo} onAdvance={onAdvanceDemo} onPrevious={onPreviousDemo} onReset={onResetDemo} onJump={onJumpDemo} onPlay={onPlayDemo} onOpenWorkspace={openDemoWorkspace}/>}
       {page==='settings'&&<Connect live={live} editEndpoint={editEndpoint} setEditEndpoint={setEditEndpoint} editPair={editPair} setEditPair={setEditPair} onConnect={onConnect} busy={busy} serverHealth={serverHealth}/>}
     </ScrollView>
     <View style={s.nav}>{nav.map(item=>{const active=page===item.id;return <Pressable key={item.id} onPress={()=>setPage(item.id)} style={s.navItem}><View style={[s.navIcon,active&&s.navIconActive]}><Icon name={item.icon} size={17} color={active?T.ink:T.muted}/></View><Text style={[s.navText,active&&s.navTextActive]}>{item.label}</Text></Pressable>})}</View>
