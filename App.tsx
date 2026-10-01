@@ -205,7 +205,7 @@ function AppContent() {
     if (!connected) { setPage('settings'); setNotice('Connect the local gateway first.'); return; }
     setBusy(true);
     try {
-      const [n,t,sec,inc,act] = await Promise.all([
+      const [n,t,sec,inc,act,telemetry] = await Promise.all([
         getNetworkHealth(endpoint,pair),getNetworkTopology(endpoint,pair),getSecurityAnalysis(endpoint,pair),getIncidents(endpoint,pair),getActions(endpoint,pair),getTelemetryChanges(endpoint,pair)
       ]);
       setNetwork(n); setTopology(t); setSecurity(sec); setIncidents(inc); setActions(act.proposals); setIncidentCases(inc.cases || []); setChanges(telemetry.changes || []);
