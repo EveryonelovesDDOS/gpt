@@ -1,4 +1,4 @@
-import { AgentRun, BlastRadius, DefensiveAction, DigitalTwin, Health, IncidentCase, IncidentTimeline, NetworkDevice, NetworkHealth, NetworkHost, NetworkTopology, PathAnalysis, SecurityAnalysis, TelemetrySnapshot } from './types';
+import { AgentRun, BlastRadius, DefensiveAction, DemoScenario, DigitalTwin, Health, IncidentCase, IncidentTimeline, NetworkDevice, NetworkHealth, NetworkHost, NetworkTopology, PathAnalysis, SecurityAnalysis, TelemetrySnapshot } from './types';
 
 export const defaultEndpoint = () => {
   if (typeof window !== 'undefined' && window.location?.protocol?.startsWith('http')) {
@@ -55,3 +55,11 @@ export const simulateAction = (base:string, token:string, id:string) => request<
 export const markActionApplied = (base:string, token:string, id:string) => request<DefensiveAction>(base, `/api/actions/${id}/applied`, token, 'POST');
 export const verifyAction = (base:string, token:string, id:string) => request<DefensiveAction>(base, `/api/actions/${id}/verify`, token, 'POST');
 export const requestActionRollback = (base:string, token:string, id:string) => request<DefensiveAction>(base, `/api/actions/${id}/rollback`, token, 'POST');
+
+
+export const getDemoScenario = (base:string, token:string) => request<DemoScenario>(base, '/api/demo', token);
+export const startDemoScenario = (base:string, token:string) => request<DemoScenario>(base, '/api/demo/start', token, 'POST');
+export const advanceDemoScenario = (base:string, token:string) => request<DemoScenario>(base, '/api/demo/advance', token, 'POST');
+export const previousDemoScenario = (base:string, token:string) => request<DemoScenario>(base, '/api/demo/previous', token, 'POST');
+export const resetDemoScenario = (base:string, token:string) => request<DemoScenario>(base, '/api/demo/reset', token, 'POST');
+export const jumpDemoScenario = (base:string, token:string, stageId:string) => request<DemoScenario>(base, '/api/demo/jump', token, 'POST', { stageId });

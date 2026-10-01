@@ -8,6 +8,7 @@ import { createPacketTracerClient } from './packetTracer.mjs';
 import { createIncidentManager } from './incidents.mjs';
 import { createTelemetryManager } from './telemetry.mjs';
 import { createDigitalTwin } from './digitalTwin.mjs';
+import { createDemoScenario } from './demo.mjs';
 import { listFiles, readDocument } from './tools.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -44,6 +45,7 @@ export function createServer({
   const agent = createAgent({ root: workspace, model, ollama, fetcher, networkClient, digitalTwin });
   const telemetry = createTelemetryManager({ networkClient });
   const incidents = createIncidentManager({ networkClient, digitalTwin, telemetry });
+  const demo = createDemoScenario();
   const server = http.createServer(async (req, res) => {
     const origin = req.headers.origin;
     if (origin && !localOrigin(origin)) return json(res, 403, { error: '此来源不允许访问本地服务' });
@@ -78,6 +80,16 @@ export function createServer({
     const supplied = req.headers.authorization?.replace(/^Bearer /i, '');
     if (supplied !== token) return json(res, 401, { error: '配对码无效' }, origin);
     try {
+      if (url.pathname === '/api/demo' && req.method === 'GET') return json(res, 200, demo.snapshot(), origin);
+      if (url.pathname === '/api/demo/start' && req.method === 'POST') return json(res, 200, demo.start(), origin);
+      if (url.pathname === '/api/demo/advance' && req.method === 'POST') return json(res, 200, demo.advance(), origin);
+      if (url.pathname === '/api/demo/previous' && req.method === 'POST') return json(res, 200, demo.previous(), origin);
+      if (url.pathname === '/api/demo/reset' && req.method === 'POST') return json(res, 200, demo.reset(), origin);
+      if (url.pathname === '/api/demo/jump' && req.method === 'POST') {
+        const { stageId } = await body(req);
+        if (!stageId) throw new Error('Demo stage is required');
+        return json(res, 200, demo.jump(stageId), origin);
+      }
       if (url.pathname === '/api/network/devices' && req.method === 'GET') return json(res, 200, { devices: await networkClient.getNetworkDevices() }, origin);
       if (url.pathname === '/api/network/health' && req.method === 'GET') return json(res, 200, await networkClient.getNetworkHealth(), origin);
       if (url.pathname === '/api/network/hosts' && req.method === 'GET') return json(res, 200, { hosts: await networkClient.getHosts() }, origin);

@@ -5,11 +5,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { PulseHalo, Reveal } from './AuroraMotion';
 import type {
-  AgentRun, DefensiveAction, DigitalTwin, Health, IncidentCase, IncidentTimeline,
+  AgentRun, DefensiveAction, DemoScenario, DigitalTwin, Health, IncidentCase, IncidentTimeline,
   NetworkHealth, NetworkTopology, SecurityAnalysis, TelemetryChange,
 } from './types';
 
-export type MobilePage = 'home' | 'dashboard' | 'topology' | 'security' | 'agent' | 'settings';
+export type MobilePage = 'home' | 'dashboard' | 'topology' | 'security' | 'agent' | 'demo' | 'settings';
 type IconName = keyof typeof Feather.glyphMap;
 type ThemeMode = 'light' | 'dark';
 
@@ -20,6 +20,8 @@ type Props = {
   network: NetworkHealth;
   topology: NetworkTopology | null;
   digitalTwin: DigitalTwin | null;
+  demoScenario: DemoScenario | null;
+  demoPlaying: boolean;
   security: SecurityAnalysis | null;
   incidents: IncidentTimeline | null;
   serverHealth: Health | null;
@@ -49,6 +51,12 @@ type Props = {
   onMarkPlanApplied: (id:string) => void;
   onVerifyPlan: (id:string) => void;
   onRollbackPlan: (id:string) => void;
+  onStartDemo: () => void;
+  onAdvanceDemo: () => void;
+  onPreviousDemo: () => void;
+  onResetDemo: () => void;
+  onJumpDemo: (stageId:string) => void;
+  onPlayDemo: () => void;
   notice: string;
   clearNotice: () => void;
 };
@@ -152,6 +160,65 @@ function makeStyles(T:Palette) {
     actionCardIcon:{width:34,height:34,borderRadius:11,alignItems:'center',justifyContent:'center'},
     actionCardTitle:{color:T.ink,fontSize:8.5,fontWeight:'900'},
     actionCardText:{color:T.muted,fontSize:7.1,lineHeight:11,marginTop:2},
+    demoLaunch:{borderRadius:18,overflow:'hidden',borderWidth:1,borderColor:T.violet+'44'},
+    demoLaunchInner:{minHeight:92,padding:13,flexDirection:'row',alignItems:'center',gap:11},
+    demoLaunchIcon:{width:42,height:42,borderRadius:14,backgroundColor:T.surface,alignItems:'center',justifyContent:'center'},
+    demoLaunchKicker:{color:T.violet,fontSize:6.3,fontWeight:'900',letterSpacing:.9},
+    demoLaunchTitle:{color:T.ink,fontSize:10.5,fontWeight:'900',marginTop:3},
+    demoLaunchText:{color:T.muted,fontSize:7.5,lineHeight:11.5,marginTop:3},
+
+    demoHero:{borderRadius:24,padding:18,overflow:'hidden'},
+    demoHeroTop:{flexDirection:'row',alignItems:'center',gap:11},
+    demoHeroIcon:{width:45,height:45,borderRadius:15,backgroundColor:'rgba(255,255,255,.12)',alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:'rgba(255,255,255,.16)'},
+    demoHeroKicker:{color:'#C9C3FF',fontSize:6.2,fontWeight:'900',letterSpacing:1.1},
+    demoHeroTitle:{color:'#FFFFFF',fontSize:18,fontWeight:'900',marginTop:4},
+    demoHeroText:{color:'#D4D8E8',fontSize:8.8,lineHeight:13.5,marginTop:11},
+    demoGuard:{marginTop:12,borderRadius:12,backgroundColor:'rgba(255,255,255,.08)',padding:9,flexDirection:'row',alignItems:'flex-start',gap:7},
+    demoGuardText:{color:'#DCE6F2',fontSize:7.3,lineHeight:11.3,flex:1},
+    demoHeroActions:{flexDirection:'row',gap:8,marginTop:13},
+    demoHeroButton:{flex:1,minHeight:42,borderRadius:12,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6,paddingHorizontal:10},
+    demoHeroButtonText:{color:'#10231E',fontSize:7.3,fontWeight:'900'},
+    demoGhostButton:{minWidth:78,minHeight:42,borderRadius:12,borderWidth:1,borderColor:'rgba(255,255,255,.25)',alignItems:'center',justifyContent:'center',flexDirection:'row',gap:5,paddingHorizontal:9},
+    demoGhostText:{color:'#FFFFFF',fontSize:6.8,fontWeight:'900'},
+    demoStageCard:{backgroundColor:T.surface,borderWidth:1,borderRadius:20,padding:14},
+    demoStageHead:{flexDirection:'row',alignItems:'center',gap:9},
+    demoStageIcon:{width:38,height:38,borderRadius:12,alignItems:'center',justifyContent:'center'},
+    demoStageKicker:{fontSize:6.2,fontWeight:'900',letterSpacing:.8},
+    demoStageTitle:{color:T.ink,fontSize:13,fontWeight:'900',marginTop:3},
+    demoStageCounter:{color:T.faint,fontSize:7,fontWeight:'900'},
+    demoStageSummary:{color:T.text,fontSize:8.4,lineHeight:13.5,marginTop:10},
+    demoProgress:{height:6,borderRadius:6,backgroundColor:T.surface3,overflow:'hidden',marginTop:12},
+    demoProgressFill:{height:'100%',borderRadius:6},
+    demoEvidenceList:{gap:7,marginTop:8},
+    demoEvidenceRow:{flexDirection:'row',alignItems:'center',gap:8},
+    demoEvidenceNo:{width:25,height:25,borderRadius:8,alignItems:'center',justifyContent:'center'},
+    demoEvidenceNoText:{fontSize:7.5,fontWeight:'900'},
+    demoEvidenceText:{color:T.text,fontSize:7.7,lineHeight:11.5,flex:1},
+    demoPathBox:{marginTop:12,borderRadius:13,borderWidth:1,borderColor:T.line,backgroundColor:T.surface2,padding:10},
+    demoPath:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:5,marginTop:9},
+    demoPathNode:{flex:1,minHeight:36,borderRadius:10,borderWidth:1,backgroundColor:T.surface,alignItems:'center',justifyContent:'center',paddingHorizontal:5},
+    demoPathNodeText:{color:T.ink,fontSize:6.8,fontWeight:'900',textAlign:'center'},
+    demoPathNote:{color:T.faint,fontSize:6.5,lineHeight:10.5,marginTop:8},
+    demoRecommendation:{marginTop:11,borderRadius:13,borderWidth:1,borderColor:T.amber+'55',backgroundColor:T.amberSoft,padding:10,flexDirection:'row',alignItems:'center',gap:8},
+    demoRecommendationIcon:{width:34,height:34,borderRadius:11,alignItems:'center',justifyContent:'center'},
+    demoRecommendationTitle:{color:T.ink,fontSize:8.4,fontWeight:'900'},
+    demoRecommendationText:{color:T.muted,fontSize:7,lineHeight:11,marginTop:2},
+    demoVerification:{marginTop:11,borderRadius:13,borderWidth:1,borderColor:T.mint+'55',backgroundColor:T.mintSoft,padding:10},
+    demoVerificationHead:{flexDirection:'row',alignItems:'center',gap:6},
+    demoVerificationLabel:{color:T.mint,fontSize:6.4,fontWeight:'900',letterSpacing:.8},
+    demoVerificationText:{color:T.text,fontSize:7.4,lineHeight:11.5,marginTop:6},
+    demoControls:{flexDirection:'row',gap:6,marginTop:12},
+    demoControlButton:{flex:1,minHeight:40,borderRadius:11,borderWidth:1,borderColor:T.line,backgroundColor:T.surface2,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:4,paddingHorizontal:5},
+    demoControlText:{color:T.text,fontSize:6.2,fontWeight:'900',textAlign:'center'},
+    demoTimeline:{backgroundColor:T.surface,borderWidth:1,borderColor:T.line,borderRadius:18,padding:11},
+    demoTimelineRow:{minHeight:51,borderRadius:12,borderWidth:1,borderColor:'transparent',paddingHorizontal:7,paddingTop:7,flexDirection:'row',gap:8,alignItems:'flex-start'},
+    demoTimelineRail:{width:18,alignItems:'center',alignSelf:'stretch'},
+    demoTimelineDot:{width:16,height:16,borderRadius:8,alignItems:'center',justifyContent:'center'},
+    demoTimelineStem:{width:1,flex:1,marginTop:3},
+    demoTimelineKicker:{fontSize:5.8,fontWeight:'900',letterSpacing:.7},
+    demoTimelineTitle:{color:T.text,fontSize:8,fontWeight:'800',marginTop:2},
+    demoTimelineState:{fontSize:5.8,fontWeight:'900',marginTop:2},
+    demoGuardrailText:{color:T.text,fontSize:7.6,lineHeight:11.5},
     connectionHero:{borderRadius:22,padding:17,borderWidth:1,borderColor:T.line,backgroundColor:T.surface},connectionIcon:{width:45,height:45,borderRadius:14,alignItems:'center',justifyContent:'center'},connectionTitle:{color:T.ink,fontSize:16,fontWeight:'900',marginTop:12},connectionText:{color:T.muted,fontSize:8.5,lineHeight:13.5,marginTop:5},connectionState:{alignSelf:'flex-start',marginTop:11,borderRadius:11,paddingHorizontal:9,paddingVertical:6,flexDirection:'row',alignItems:'center',gap:5},fieldLabel:{color:T.text,fontSize:8,fontWeight:'900',marginBottom:6,marginTop:7},inputWrap:{height:47,borderWidth:1,borderColor:T.lineStrong,borderRadius:13,backgroundColor:T.surface2,paddingHorizontal:10,flexDirection:'row',alignItems:'center',gap:8},input:{flex:1,color:T.ink,fontSize:9.5},connectButton:{height:47,borderRadius:13,backgroundColor:T.mint,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:7,marginTop:14},connectButtonText:{color:'#0D2821',fontSize:8.5,fontWeight:'900'},tip:{backgroundColor:T.surface,borderWidth:1,borderColor:T.line,borderRadius:15,padding:11,flexDirection:'row',gap:9},tipIcon:{width:35,height:35,borderRadius:11,alignItems:'center',justifyContent:'center'},tipTitle:{color:T.ink,fontSize:9,fontWeight:'900'},tipText:{color:T.muted,fontSize:7.7,lineHeight:12.5,marginTop:3},
     nav:{height:74,backgroundColor:T.nav,borderTopWidth:1,borderTopColor:T.line,flexDirection:'row',paddingHorizontal:7,paddingTop:7,shadowColor:T.shadow,shadowOpacity:.08,shadowRadius:14,shadowOffset:{width:0,height:-6}},navItem:{flex:1,alignItems:'center',gap:3},navIcon:{width:38,height:34,borderRadius:12,alignItems:'center',justifyContent:'center'},navIconActive:{backgroundColor:T.mintSoft},navText:{color:T.muted,fontSize:6.5,fontWeight:'800'},navTextActive:{color:T.ink,fontWeight:'900'},
   });
@@ -186,18 +253,19 @@ function operatorSections(text:string) {
 }
 function severityColor(T:Palette,value:string) { return ['critical','high'].includes(value)?T.coral:['warning','medium'].includes(value)?T.amber:T.mint; }
 
-function Header({live,themeMode,onToggleTheme,onConnect,onRefresh}:{live:boolean;themeMode:ThemeMode;onToggleTheme:()=>void;onConnect:()=>void;onRefresh:()=>void}) {
+function Header({live,themeMode,onToggleTheme,onConnect,onRefresh,onDemo}:{live:boolean;themeMode:ThemeMode;onToggleTheme:()=>void;onConnect:()=>void;onRefresh:()=>void;onDemo:()=>void}) {
   const {T,s}=useTheme();
   return <View style={s.header}>
     <View style={s.brandRow}>
       <LinearGradient colors={[T.mint,T.violet]} start={{x:0,y:0}} end={{x:1,y:1}} style={s.logo}><Text style={s.logoText}>N</Text></LinearGradient>
-      <View><Text style={s.brand}>NEXUS</Text><Text style={s.brandSub}>V10 · DIGITAL TWIN</Text></View>
+      <View><Text style={s.brand}>NEXUS</Text><Text style={s.brandSub}>V12 · DEMO ENGINE</Text></View>
     </View>
     <View style={s.headerActions}>
       <Pressable onPress={onRefresh} style={[s.livePill,{backgroundColor:live?T.mintSoft:T.surface2}]}>
         {live?<PulseHalo color={T.mint}/>:<View style={[s.statusDot,{backgroundColor:T.faint}]}/>}
         <Text style={[s.liveText,{color:live?T.mint:T.muted}]}>{live?'LIVE':'PREVIEW'}</Text>
       </Pressable>
+      <Pressable onPress={onDemo} style={s.roundButton}><Icon name="play-circle" size={16} color={T.violet}/></Pressable>
       <Pressable onPress={onToggleTheme} style={s.roundButton}><Icon name={themeMode==='dark'?'sun':'moon'} size={16} color={themeMode==='dark'?'#F6D36A':T.text}/></Pressable>
       <Pressable onPress={onConnect} style={s.roundButton}><Icon name="link-2" size={16} color={T.text}/></Pressable>
     </View>
@@ -236,6 +304,14 @@ function Home({live,network,topology,security,changes,digitalTwin,setPage}:{live
 
     <SectionHead eyebrow="PRIORITY" title="What needs attention" action={<Pressable onPress={()=>setPage('security')}><Text style={s.sectionAction}>View all</Text></Pressable>}/>
     {topAlert?<Pressable onPress={()=>setPage('security')} style={s.priority}><View style={s.priorityIcon}><Icon name="alert-triangle" size={17} color={T.coral}/></View><View style={{flex:1}}><View style={s.changeTitleRow}><Text style={s.priorityTitle}>{topAlert.title}</Text><Text style={s.priorityMeta}>{topAlert.severity.toUpperCase()}</Text></View><Text style={s.priorityText}>{topAlert.detail}</Text></View><Icon name="chevron-right" size={17} color={T.faint}/></Pressable>:<View style={s.cardFlat}><Text style={[s.changeTitle,{color:T.mint}]}>No urgent signal</Text><Text style={s.changeDetail}>Current NEXUS heuristics are quiet.</Text></View>}
+
+    <Pressable onPress={()=>setPage('demo')} style={s.demoLaunch}>
+      <LinearGradient colors={[T.violetSoft,T.blueSoft]} start={{x:0,y:0}} end={{x:1,y:1}} style={s.demoLaunchInner}>
+        <View style={s.demoLaunchIcon}><Icon name="play-circle" size={18} color={T.violet}/></View>
+        <View style={{flex:1}}><Text style={s.demoLaunchKicker}>PRESENTATION MODE</Text><Text style={s.demoLaunchTitle}>Run the full NEXUS story</Text><Text style={s.demoLaunchText}>Baseline → signal → Autopilot → Digital Twin → human approval → verification.</Text></View>
+        <Icon name="chevron-right" size={17} color={T.violet}/>
+      </LinearGradient>
+    </Pressable>
 
     <SectionHead eyebrow="WORKSPACES" title="Jump back in"/>
     <View style={s.grid2}>{[
@@ -529,6 +605,50 @@ function Agent({live,serverHealth,busy,prompt,setPrompt,run,onSubmit,onAction}:{
   </View>;
 }
 
+function DemoMode({scenario,playing,busy,onStart,onAdvance,onPrevious,onReset,onJump,onPlay,onOpenWorkspace}:{scenario:DemoScenario|null;playing:boolean;busy:boolean;onStart:()=>void;onAdvance:()=>void;onPrevious:()=>void;onReset:()=>void;onJump:(id:string)=>void;onPlay:()=>void;onOpenWorkspace:()=>void}) {
+  const {T,s}=useTheme();
+  const current=scenario?.current;
+  const tone=(value?:string)=>value==='coral'?T.coral:value==='amber'?T.amber:value==='blue'?T.blue:value==='violet'?T.violet:T.mint;
+  const currentColor=tone(current?.tone);
+  const active=scenario?.enabled;
+  return <View style={s.page}>
+    <SectionHead eyebrow="DEMO MODE" title="Presentation scenario" action={<View style={[s.badge,{backgroundColor:T.violetSoft}]}><Icon name="film" size={12} color={T.violet}/><Text style={[s.sectionAction,{color:T.violet}]}>SIMULATION</Text></View>}/>
+    <LinearGradient colors={['#151A2B','#292554','#473582']} style={s.demoHero}>
+      <View style={s.demoHeroTop}><View style={s.demoHeroIcon}><Icon name={playing?'loader':'play-circle'} size={21} color="#FFFFFF"/></View><View style={{flex:1}}><Text style={s.demoHeroKicker}>NEXUS PRESENTATION ENGINE</Text><Text style={s.demoHeroTitle}>{scenario?.title||'ATTACKER-PC Containment Story'}</Text></View></View>
+      <Text style={s.demoHeroText}>{scenario?.description||'A guided story that demonstrates the NEXUS workflow without pretending to alter the live network.'}</Text>
+      <View style={s.demoGuard}><Icon name="shield" size={13} color="#8DF0D2"/><Text style={s.demoGuardText}>Synthetic demo evidence is isolated from live controller evidence. No IOS command is executed.</Text></View>
+      <View style={s.demoHeroActions}>
+        <Pressable disabled={busy||playing} onPress={active?onPlay:onStart} style={[s.demoHeroButton,{backgroundColor:T.mint},(busy||playing)&&{opacity:.5}]}><Icon name={playing?'loader':active?'play':'play-circle'} size={14} color="#10231E"/><Text style={s.demoHeroButtonText}>{playing?'PLAYING STORY…':active?'PLAY FULL STORY':'START DEMO'}</Text></Pressable>
+        {active&&<Pressable disabled={busy||playing} onPress={onReset} style={s.demoGhostButton}><Icon name="rotate-ccw" size={13} color="#FFFFFF"/><Text style={s.demoGhostText}>RESET</Text></Pressable>}
+      </View>
+    </LinearGradient>
+
+    {current&&<View style={[s.demoStageCard,{borderColor:currentColor+'66'}]}>
+      <View style={s.demoStageHead}><View style={[s.demoStageIcon,{backgroundColor:currentColor+'1A'}]}><Icon name={current.id==='path-analysis'?'git-branch':current.id==='response-ready'?'shield':current.id==='verification'||current.id==='resolved'?'check-circle':current.id==='autopilot-prepared'?'zap':current.id==='threat-observed'?'alert-triangle':'activity'} size={16} color={currentColor}/></View><View style={{flex:1}}><Text style={[s.demoStageKicker,{color:currentColor}]}>{current.kicker}</Text><Text style={s.demoStageTitle}>{current.title}</Text></View><Text style={s.demoStageCounter}>{scenario!.stageIndex+1}/{scenario!.stageCount}</Text></View>
+      <Text style={s.demoStageSummary}>{current.summary}</Text>
+      <View style={s.demoProgress}><View style={[s.demoProgressFill,{width:(current.progress+'%') as any,backgroundColor:currentColor}]}/></View>
+      <Text style={[s.micro,{marginTop:12}]}>EVIDENCE IN THIS STEP</Text>
+      <View style={s.demoEvidenceList}>{current.evidence.map((item,index)=><View key={item+index} style={s.demoEvidenceRow}><View style={[s.demoEvidenceNo,{backgroundColor:currentColor+'18'}]}><Text style={[s.demoEvidenceNoText,{color:currentColor}]}>{index+1}</Text></View><Text style={s.demoEvidenceText}>{item}</Text></View>)}</View>
+      {!!current.relationshipPath.length&&<View style={s.demoPathBox}><Text style={s.micro}>DEMO RELATIONSHIP PATH</Text><View style={s.demoPath}>{current.relationshipPath.map((label,index)=><React.Fragment key={label}><View style={[s.demoPathNode,{borderColor:index===0?T.coral+'77':index===current.relationshipPath.length-1?T.violet+'77':T.mint+'77'}]}><Text style={s.demoPathNodeText}>{label}</Text></View>{index<current.relationshipPath.length-1&&<Icon name="arrow-right" size={13} color={T.faint}/>}</React.Fragment>)}</View><Text style={s.demoPathNote}>Graph relationship only · IP reachability stays not verified.</Text></View>}
+      {current.recommendation&&<View style={s.demoRecommendation}><View style={[s.demoRecommendationIcon,{backgroundColor:T.amberSoft}]}><Icon name="shield" size={15} color={T.amber}/></View><View style={{flex:1}}><Text style={s.demoRecommendationTitle}>{current.recommendation.title}</Text><Text style={s.demoRecommendationText}>{current.recommendation.target} · {current.recommendation.mode} · rollback ready</Text></View></View>}
+      {current.verification&&<View style={s.demoVerification}><View style={s.demoVerificationHead}><Icon name="check-circle" size={14} color={T.mint}/><Text style={s.demoVerificationLabel}>{current.verification.label}</Text></View><Text style={s.demoVerificationText}>{current.verification.detail}</Text></View>}
+      <View style={s.demoControls}>
+        <Pressable disabled={!active||scenario!.stageIndex===0||playing||busy} onPress={onPrevious} style={[s.demoControlButton,(!active||scenario!.stageIndex===0||playing||busy)&&{opacity:.35}]}><Icon name="chevron-left" size={14} color={T.text}/><Text style={s.demoControlText}>BACK</Text></Pressable>
+        <Pressable onPress={onOpenWorkspace} style={[s.demoControlButton,{backgroundColor:T.violetSoft,borderColor:T.violet+'55'}]}><Icon name="external-link" size={13} color={T.violet}/><Text style={s.demoControlText}>OPEN WORKSPACE</Text></Pressable>
+        <Pressable disabled={!active||scenario!.stageIndex>=scenario!.stageCount-1||playing||busy} onPress={onAdvance} style={[s.demoControlButton,{backgroundColor:T.mintSoft,borderColor:T.mint+'55'},(!active||scenario!.stageIndex>=scenario!.stageCount-1||playing||busy)&&{opacity:.35}]}><Text style={s.demoControlText}>NEXT</Text><Icon name="chevron-right" size={14} color={T.mint}/></Pressable>
+      </View>
+    </View>}
+
+    {!!scenario?.stages.length&&<>
+      <SectionHead eyebrow="STORYBOARD" title="Eight-step demo flow"/>
+      <View style={s.demoTimeline}>{scenario.stages.map((stage,index)=>{const color=tone(stage.tone);const complete=stage.state==='complete';const activeStage=stage.state==='active';return <Pressable key={stage.id} onPress={()=>onJump(stage.id)} style={[s.demoTimelineRow,activeStage&&{borderColor:color+'77',backgroundColor:color+'0E'}]}><View style={s.demoTimelineRail}><View style={[s.demoTimelineDot,{backgroundColor:complete||activeStage?color:T.lineStrong}]}>{complete&&<Icon name="check" size={9} color="#FFFFFF"/>}</View>{index<scenario.stages.length-1&&<View style={[s.demoTimelineStem,{backgroundColor:complete?color+'55':T.line}]}/>}</View><View style={{flex:1,paddingBottom:11}}><Text style={[s.demoTimelineKicker,{color:activeStage?color:T.muted}]}>{stage.kicker}</Text><Text style={[s.demoTimelineTitle,activeStage&&{color:T.ink}]}>{stage.title}</Text></View><Text style={[s.demoTimelineState,{color:activeStage?color:T.faint}]}>{stage.state.toUpperCase()}</Text></Pressable>})}</View>
+    </>}
+
+    <SectionHead eyebrow="PRESENTATION SAFETY" title="What Demo Mode never claims"/>
+    <View style={s.card}>{(scenario?.guardrails||['Demo Mode never pushes IOS configuration.','Synthetic evidence is separate from live controller evidence.','Human approval stays visible.']).map((item,index)=><View key={item} style={[s.deviceRow,index<(scenario?.guardrails?.length||3)-1&&s.divider]}><View style={[s.deviceIcon,{backgroundColor:T.mintSoft}]}><Icon name="shield" size={14} color={T.mint}/></View><Text style={[s.demoGuardrailText,{flex:1}]}>{item}</Text></View>)}</View>
+  </View>;
+}
+
 function Connect({live,editEndpoint,setEditEndpoint,editPair,setEditPair,onConnect,busy,serverHealth}:{live:boolean;editEndpoint:string;setEditEndpoint:(v:string)=>void;editPair:string;setEditPair:(v:string)=>void;onConnect:()=>void;busy:boolean;serverHealth:Health|null}) {
   const {T,s}=useTheme();
   return <View style={s.page}><SectionHead eyebrow="CONNECT" title="Local lab session"/><View style={s.connectionHero}><View style={[s.connectionIcon,{backgroundColor:live?T.mintSoft:T.surface3}]}><Icon name="radio" size={21} color={live?T.mint:T.muted}/></View><Text style={s.connectionTitle}>{live?'Packet Tracer is live':'Ready to connect'}</Text><Text style={s.connectionText}>{live?'Controller telemetry and the digital twin are available to NEXUS.':'Use 10.0.2.2 from the Android emulator to reach the Windows NEXUS server.'}</Text><View style={[s.connectionState,{backgroundColor:live?T.mintSoft:T.surface3}]}><View style={[s.statusDot,{backgroundColor:live?T.mint:T.faint}]}/><Text style={[s.contextText,{color:live?T.mint:T.muted}]}>{live?'CONNECTED':'OFFLINE'}</Text></View></View>
@@ -544,9 +664,25 @@ const nav:{id:MobilePage;label:string;icon:IconName}[]=[
 
 function Experience(props:Props) {
   const {T,s}=useTheme();
-  const {page,setPage,live,network,topology,digitalTwin,security,serverHealth,actions,incidentCases,changes,themeMode,onToggleTheme,incidentMode,setIncidentMode,busy,prompt,setPrompt,run,editEndpoint,setEditEndpoint,editPair,setEditPair,onConnect,onRefresh,onSubmit,onCreatePlan,onDecidePlan,onOpenIncident,onCloseIncident,onSimulatePlan,onMarkPlanApplied,onVerifyPlan,onRollbackPlan,notice,clearNotice}=props;
+  const {page,setPage,live,network,topology,digitalTwin,demoScenario,demoPlaying,security,serverHealth,actions,incidentCases,changes,themeMode,onToggleTheme,incidentMode,setIncidentMode,busy,prompt,setPrompt,run,editEndpoint,setEditEndpoint,editPair,setEditPair,onConnect,onRefresh,onSubmit,onCreatePlan,onDecidePlan,onOpenIncident,onCloseIncident,onSimulatePlan,onMarkPlanApplied,onVerifyPlan,onRollbackPlan,onStartDemo,onAdvanceDemo,onPreviousDemo,onResetDemo,onJumpDemo,onPlayDemo,notice,clearNotice}=props;
   const scrollRef=useRef<ScrollView>(null);
   const [twinIntent,setTwinIntent]=useState<TwinIntent>(null);
+
+  function openDemoWorkspace() {
+    const current=demoScenario?.current;
+    if(!current) return;
+    if(current.id==='path-analysis') {
+      setTwinIntent({type:'path',source:'ATTACKER-PC',target:'SERVER',nonce:Date.now()});
+      setPage('topology');
+      return;
+    }
+    if(current.id==='threat-observed') {
+      setTwinIntent({type:'focus',asset:'ATTACKER-PC',nonce:Date.now()});
+      setPage('topology');
+      return;
+    }
+    setPage((current.page||'home') as MobilePage);
+  }
 
   function handleAgentAction(action:NonNullable<AgentRun['actions']>[number]) {
     if(action.type==='ask' && action.payload.prompt) {
@@ -567,14 +703,15 @@ function Experience(props:Props) {
 
   useEffect(()=>{if(page!=='agent'||!run)return;const t=setTimeout(()=>scrollRef.current?.scrollToEnd({animated:true}),180);return()=>clearTimeout(t);},[page,run?.status,run?.answer,run?.events.length]);
   return <SafeAreaView style={s.root} edges={['top','bottom']}>
-    <Header live={live} themeMode={themeMode} onToggleTheme={onToggleTheme} onConnect={()=>setPage('settings')} onRefresh={onRefresh}/>
+    <Header live={live} themeMode={themeMode} onToggleTheme={onToggleTheme} onConnect={()=>setPage('settings')} onRefresh={onRefresh} onDemo={()=>setPage('demo')}/>
     {!!notice&&<Pressable onPress={clearNotice} style={s.notice}><Icon name="info" size={13} color={T.amber}/><Text style={s.noticeText} numberOfLines={2}>{notice}</Text><Icon name="x" size={13} color={T.muted}/></Pressable>}
     <ScrollView ref={scrollRef} style={s.scroll} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
       {page==='home'&&<Home live={live} network={network} topology={topology} security={security} changes={changes} digitalTwin={digitalTwin} setPage={setPage}/>}
       {page==='dashboard'&&<Overview network={network} topology={topology} security={security} changes={changes}/>}
       {page==='topology'&&<Fabric topology={topology} digitalTwin={digitalTwin} incidentMode={incidentMode} setIncidentMode={setIncidentMode} intent={twinIntent}/>}
       {page==='security'&&<Defend security={security} cases={incidentCases} actions={actions} onCreatePlan={onCreatePlan} onDecide={onDecidePlan} onOpenIncident={onOpenIncident} onCloseIncident={onCloseIncident} onSimulate={onSimulatePlan} onApplied={onMarkPlanApplied} onVerify={onVerifyPlan} onRollback={onRollbackPlan}/>}
-      {page==='agent'&&<Agent live={live} serverHealth={serverHealth} busy={busy} prompt={prompt} setPrompt={setPrompt} run={run} onSubmit={onSubmit} onAction={handleAgentAction}/>}
+      {page==='agent'&&<Agent live={live} serverHealth={serverHealth} busy={busy} prompt={prompt} setPrompt={setPrompt} run={run} onSubmit={onSubmit} onAction={handleAgentAction}/>} 
+      {page==='demo'&&<DemoMode scenario={demoScenario} playing={demoPlaying} busy={busy} onStart={onStartDemo} onAdvance={onAdvanceDemo} onPrevious={onPreviousDemo} onReset={onResetDemo} onJump={onJumpDemo} onPlay={onPlayDemo} onOpenWorkspace={openDemoWorkspace}/>}
       {page==='settings'&&<Connect live={live} editEndpoint={editEndpoint} setEditEndpoint={setEditEndpoint} editPair={editPair} setEditPair={setEditPair} onConnect={onConnect} busy={busy} serverHealth={serverHealth}/>}
     </ScrollView>
     <View style={s.nav}>{nav.map(item=>{const active=page===item.id;return <Pressable key={item.id} onPress={()=>setPage(item.id)} style={s.navItem}><View style={[s.navIcon,active&&s.navIconActive]}><Icon name={item.icon} size={17} color={active?T.ink:T.muted}/></View><Text style={[s.navText,active&&s.navTextActive]}>{item.label}</Text></Pressable>})}</View>

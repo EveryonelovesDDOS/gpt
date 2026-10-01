@@ -10,10 +10,10 @@ import { AnimatedTabs, ContinuousDataFlow, DayBackdrop, PageTransition, PulseHal
 import { TopologyScene } from './src/TopologyScene';
 import { HomePage } from './src/HomePage';
 import { MobileExperience } from './src/MobileExperience';
-import { AgentRun, DefensiveAction, DigitalTwin, Health, IncidentCase, IncidentTimeline, NetworkHealth, NetworkTopology, SecurityAnalysis, TelemetryChange } from './src/types';
-import { checkHealth, closeIncident, decideAction, defaultEndpoint, getActions, getDigitalTwin, getIncidents, getNetworkHealth, getNetworkTopology, getRun, getSecurityAnalysis, getTelemetryChanges, markActionApplied, openIncident, proposeAction, requestActionRollback, simulateAction, startRun, verifyAction } from './src/api';
+import { AgentRun, DefensiveAction, DemoScenario, DigitalTwin, Health, IncidentCase, IncidentTimeline, NetworkHealth, NetworkTopology, SecurityAnalysis, TelemetryChange } from './src/types';
+import { advanceDemoScenario, checkHealth, closeIncident, decideAction, defaultEndpoint, getActions, getDemoScenario, getDigitalTwin, getIncidents, getNetworkHealth, getNetworkTopology, getRun, getSecurityAnalysis, getTelemetryChanges, jumpDemoScenario, markActionApplied, openIncident, previousDemoScenario, proposeAction, requestActionRollback, resetDemoScenario, simulateAction, startDemoScenario, startRun, verifyAction } from './src/api';
 
-type Page = 'home' | 'dashboard' | 'topology' | 'security' | 'agent' | 'settings';
+type Page = 'home' | 'dashboard' | 'topology' | 'security' | 'agent' | 'demo' | 'settings';
 type IconName = keyof typeof Feather.glyphMap;
 
 const P = {
@@ -119,6 +119,8 @@ function AppContent() {
   const [incidentCases,setIncidentCases] = useState<IncidentCase[]>([]);
   const [changes,setChanges] = useState<TelemetryChange[]>([]);
   const [digitalTwin,setDigitalTwin] = useState<DigitalTwin|null>(null);
+  const [demoScenario,setDemoScenario] = useState<DemoScenario|null>(null);
+  const [demoPlaying,setDemoPlaying] = useState(false);
   const [themeMode,setThemeMode] = useState<'light'|'dark'>('light');
   const [incidentMode,setIncidentMode] = useState(false);
   const [connected,setConnected] = useState(false);
@@ -146,9 +148,11 @@ function AppContent() {
         getActions(endpoint,pair),
         getTelemetryChanges(endpoint,pair),
         getDigitalTwin(endpoint,pair),
-      ]).then(([n,t,sec,inc,act,telemetry,twin])=>{
+        getDemoScenario(endpoint,pair),
+      ]).then(([n,t,sec,inc,act,telemetry,twin,demo])=>{
         setNetwork(n); setTopology(t); setSecurity(sec); setIncidents(inc); setActions(act.proposals);
         setDigitalTwin(twin);
+        setDemoScenario(demo);
         setIncidentCases(inc.cases || []);
         setChanges(telemetry.changes || []);
       }).catch(()=>{});
@@ -178,6 +182,7 @@ function AppContent() {
     { id:'topology' as Page, label:'Fabric', icon:'share-2' as IconName },
     { id:'security' as Page, label:'Defend', icon:'shield' as IconName },
     { id:'agent' as Page, label:'NEXUS AI', icon:'command' as IconName },
+    { id:'demo' as Page, label:'Demo', icon:'play-circle' as IconName },
     { id:'settings' as Page, label:'Connect', icon:'sliders' as IconName },
   ],[]);
 
@@ -187,7 +192,7 @@ function AppContent() {
       const base = editEndpoint.trim().replace(/\/$/,'');
       const token = editPair.trim();
       const h = await checkHealth(base);
-      const [n,t,sec,inc,act,telemetry,twin] = await Promise.all([
+      const [n,t,sec,inc,act,telemetry,twin,demo] = await Promise.all([
         getNetworkHealth(base,token),
         getNetworkTopology(base,token),
         getSecurityAnalysis(base,token),
@@ -195,9 +200,10 @@ function AppContent() {
         getActions(base,token),
         getTelemetryChanges(base,token),
         getDigitalTwin(base,token),
+        getDemoScenario(base,token),
       ]);
       setEndpoint(base); setPair(token); setServerHealth(h); setNetwork(n); setTopology(t); setSecurity(sec); setIncidents(inc); setActions(act.proposals);
-      setIncidentCases(inc.cases || []); setChanges(telemetry.changes || []); setDigitalTwin(twin); setConnected(true);
+      setIncidentCases(inc.cases || []); setChanges(telemetry.changes || []); setDigitalTwin(twin); setDemoScenario(demo); setConnected(true);
       await AsyncStorage.multiSet([['@nexus/endpoint',base],['@nexus/pair',token]]);
       setNotice('Live Packet Tracer telemetry connected.');
       setPage('dashboard');
@@ -211,10 +217,10 @@ function AppContent() {
     if (!connected) { setPage('settings'); setNotice('Connect the local gateway first.'); return; }
     setBusy(true);
     try {
-      const [n,t,sec,inc,act,telemetry,twin] = await Promise.all([
-        getNetworkHealth(endpoint,pair),getNetworkTopology(endpoint,pair),getSecurityAnalysis(endpoint,pair),getIncidents(endpoint,pair),getActions(endpoint,pair),getTelemetryChanges(endpoint,pair),getDigitalTwin(endpoint,pair)
+      const [n,t,sec,inc,act,telemetry,twin,demo] = await Promise.all([
+        getNetworkHealth(endpoint,pair),getNetworkTopology(endpoint,pair),getSecurityAnalysis(endpoint,pair),getIncidents(endpoint,pair),getActions(endpoint,pair),getTelemetryChanges(endpoint,pair),getDigitalTwin(endpoint,pair),getDemoScenario(endpoint,pair)
       ]);
-      setNetwork(n); setTopology(t); setSecurity(sec); setIncidents(inc); setActions(act.proposals); setIncidentCases(inc.cases || []); setChanges(telemetry.changes || []); setDigitalTwin(twin);
+      setNetwork(n); setTopology(t); setSecurity(sec); setIncidents(inc); setActions(act.proposals); setIncidentCases(inc.cases || []); setChanges(telemetry.changes || []); setDigitalTwin(twin); setDemoScenario(demo);
     } catch(e) { setNotice(e instanceof Error ? e.message : 'Refresh failed'); }
     finally { setBusy(false); }
   }
@@ -302,6 +308,63 @@ function AppContent() {
     finally { setBusy(false); }
   }
 
+  async function startDemo() {
+    if (!connected) { setPage('settings'); setNotice('Connect NEXUS before starting Demo Mode.'); return; }
+    setBusy(true);
+    try {
+      const next=await startDemoScenario(endpoint,pair);
+      setDemoScenario(next);
+      setPage('demo');
+      setNotice('Presentation Demo Mode started. Synthetic evidence is clearly labelled.');
+    } catch(e) { setNotice(e instanceof Error ? e.message : 'Unable to start demo'); }
+    finally { setBusy(false); }
+  }
+
+  async function advanceDemo() {
+    setBusy(true);
+    try { setDemoScenario(await advanceDemoScenario(endpoint,pair)); }
+    catch(e) { setNotice(e instanceof Error ? e.message : 'Unable to advance demo'); }
+    finally { setBusy(false); }
+  }
+
+  async function previousDemo() {
+    setBusy(true);
+    try { setDemoScenario(await previousDemoScenario(endpoint,pair)); }
+    catch(e) { setNotice(e instanceof Error ? e.message : 'Unable to rewind demo'); }
+    finally { setBusy(false); }
+  }
+
+  async function jumpDemo(stageId:string) {
+    setBusy(true);
+    try { setDemoScenario(await jumpDemoScenario(endpoint,pair,stageId)); setPage('demo'); }
+    catch(e) { setNotice(e instanceof Error ? e.message : 'Unable to jump demo stage'); }
+    finally { setBusy(false); }
+  }
+
+  async function resetDemo() {
+    setDemoPlaying(false);
+    setBusy(true);
+    try { setDemoScenario(await resetDemoScenario(endpoint,pair)); setNotice('Demo Mode reset. Live network state was not changed.'); }
+    catch(e) { setNotice(e instanceof Error ? e.message : 'Unable to reset demo'); }
+    finally { setBusy(false); }
+  }
+
+  async function playDemoStory() {
+    if (!connected || demoPlaying) return;
+    setDemoPlaying(true);
+    setPage('demo');
+    try {
+      let current=demoScenario?.enabled ? demoScenario : await startDemoScenario(endpoint,pair);
+      setDemoScenario(current);
+      while(current.stageIndex < current.stageCount-1) {
+        await new Promise(resolve=>setTimeout(resolve,1250));
+        current=await advanceDemoScenario(endpoint,pair);
+        setDemoScenario(current);
+      }
+    } catch(e) { setNotice(e instanceof Error ? e.message : 'Demo playback stopped'); }
+    finally { setDemoPlaying(false); }
+  }
+
   async function toggleTheme() {
     const next=themeMode==='light'?'dark':'light';
     setThemeMode(next);
@@ -332,6 +395,8 @@ function AppContent() {
       incidentCases={incidentCases}
       changes={changes}
       digitalTwin={digitalTwin}
+      demoScenario={demoScenario}
+      demoPlaying={demoPlaying}
       themeMode={themeMode}
       onToggleTheme={toggleTheme}
       incidentMode={incidentMode}
@@ -355,6 +420,12 @@ function AppContent() {
       onMarkPlanApplied={markPlanApplied}
       onVerifyPlan={verifyPlan}
       onRollbackPlan={rollbackPlan}
+      onStartDemo={startDemo}
+      onAdvanceDemo={advanceDemo}
+      onPreviousDemo={previousDemo}
+      onResetDemo={resetDemo}
+      onJumpDemo={jumpDemo}
+      onPlayDemo={playDemoStory}
       notice={notice}
       clearNotice={()=>setNotice('')}
     />;
@@ -363,7 +434,7 @@ function AppContent() {
   const header = <View style={[s.header,themeMode==='dark'&&{backgroundColor:'rgba(12,19,33,.96)',borderBottomColor:'#263247'}]}>
     <View style={s.brand}>
       <LinearGradient colors={[P.mint,P.lilac]} start={{x:0,y:0}} end={{x:1,y:1}} style={s.logo}><Text style={s.logoText}>N</Text></LinearGradient>
-      <View><Text style={[s.brandName,themeMode==='dark'&&{color:'#F7FAFF'}]}>NEXUS</Text><Text style={[s.brandSub,themeMode==='dark'&&{color:'#94A3B8'}]}>V11 · INTERACTIVE TWIN · INCIDENT AUTOPILOT</Text></View>
+      <View><Text style={[s.brandName,themeMode==='dark'&&{color:'#F7FAFF'}]}>NEXUS</Text><Text style={[s.brandSub,themeMode==='dark'&&{color:'#94A3B8'}]}>V12 · DEMO ENGINE · RELEASE CANDIDATE</Text></View>
     </View>
     {desktop && <AnimatedTabs items={nav} activeId={page} onSelect={(id)=>setPage(id as Page)} width={94} />}
     <View style={s.headerRight}>
@@ -616,6 +687,43 @@ function AppContent() {
         </View>
       </>}
 
+      {page==='demo' && <>
+        <SectionTitle overline="PRESENTATION ENGINE" title="Run the NEXUS story" right={<View style={s.pageActions}><StatusChip label="SIMULATION" tone="purple"/><StatusChip label={demoScenario?.enabled?'ACTIVE':'READY'} tone={demoScenario?.enabled?'good':'neutral'}/></View>} />
+        <Text style={s.pageIntro}>A deterministic eight-step presentation flow. Demo evidence is synthetic and separated from live controller evidence; it never pushes IOS configuration.</Text>
+
+        <LinearGradient colors={['#171B2D','#292554','#463680']} style={[s.heroMain,{minHeight:260,marginBottom:16}]}>
+          <View style={s.heroBadge}><View style={[s.heroBadgeDot,{backgroundColor:'#8B7CFF'}]}/><Text style={[s.heroBadgeText,{color:'#C8C2FF'}]}>NEXUS DEMO MODE</Text></View>
+          <Text style={[s.heroTitle,{color:'#FFFFFF',fontSize:34,lineHeight:40}]}>{demoScenario?.title||'ATTACKER-PC Containment Story'}</Text>
+          <Text style={[s.heroText,{color:'#CDD5E6'}]}>{demoScenario?.description||'Connect the local gateway to start the guided presentation story.'}</Text>
+          <View style={s.heroActions}>
+            <Pressable onPress={demoScenario?.enabled?playDemoStory:startDemo} disabled={!connected||busy||demoPlaying} style={[s.primary,(!connected||busy||demoPlaying)&&{opacity:.5}]}>
+              <Icon name={demoPlaying?'loader':'play-circle'} size={15} color="#172033"/><Text style={s.primaryText}>{demoPlaying?'PLAYING…':demoScenario?.enabled?'PLAY FULL STORY':'START DEMO'}</Text>
+            </Pressable>
+            {demoScenario?.enabled&&<Pressable onPress={resetDemo} disabled={busy||demoPlaying} style={[s.secondary,(busy||demoPlaying)&&{opacity:.5}]}><Icon name="rotate-ccw" size={14} color={P.lilac}/><Text style={s.secondaryText}>RESET</Text></Pressable>}
+          </View>
+        </LinearGradient>
+
+        {demoScenario?.current&&<View style={[s.panel,{marginBottom:16,borderColor:P.borderStrong}]}>
+          <View style={s.panelHead}><View><Text style={s.panelOverline}>{demoScenario.current.kicker}</Text><Text style={s.panelTitle}>{demoScenario.current.title}</Text></View><StatusChip label={`${demoScenario.stageIndex+1}/${demoScenario.stageCount}`} tone="purple"/></View>
+          <Text style={s.contextText}>{demoScenario.current.summary}</Text>
+          <View style={[s.progressTrack,{marginTop:14}]}><View style={[s.progressFill,{width:(demoScenario.current.progress+'%') as any}]}/></View>
+          <View style={[s.metricGrid,{flexDirection:'row',marginTop:14,marginBottom:0}]}>
+            {demoScenario.current.evidence.slice(0,3).map((item,index)=><View key={item} style={[s.metric,{minHeight:95}]}><Text style={[s.metricTrend,{color:P.lilac}]}>EVIDENCE {index+1}</Text><Text style={[s.metricLabel,{fontSize:9,lineHeight:14,marginTop:12}]}>{item}</Text></View>)}
+          </View>
+          {!!demoScenario.current.relationshipPath.length&&<View style={[s.relationshipPanel,{marginTop:14}]}><View style={s.relationshipHead}><Text style={s.relationshipTitle}>Demo relationship path</Text><Text style={s.relationshipCount}>reachability not verified</Text></View><View style={s.relationshipGrid}>{demoScenario.current.relationshipPath.map((asset,index)=><React.Fragment key={asset}><View style={s.relationshipChip}><View style={[s.relationshipDot,{backgroundColor:index===0?P.coral:index===demoScenario.current.relationshipPath.length-1?P.lilac:P.mint}]}/><Text style={s.relationshipText}>{asset}</Text></View>{index<demoScenario.current.relationshipPath.length-1&&<Icon name="arrow-right" size={14} color={P.muted}/>}</React.Fragment>)}</View></View>}
+          <View style={s.planButtons}>
+            <Pressable onPress={previousDemo} disabled={demoScenario.stageIndex===0||busy||demoPlaying} style={[s.reject,(demoScenario.stageIndex===0||busy||demoPlaying)&&{opacity:.4}]}><Text style={s.rejectText}>BACK</Text></Pressable>
+            <Pressable onPress={()=>setPage((demoScenario.current.page||'home') as Page)} style={s.secondary}><Text style={s.secondaryText}>OPEN WORKSPACE</Text></Pressable>
+            <Pressable onPress={advanceDemo} disabled={demoScenario.stageIndex>=demoScenario.stageCount-1||busy||demoPlaying} style={[s.approve,(demoScenario.stageIndex>=demoScenario.stageCount-1||busy||demoPlaying)&&{opacity:.4}]}><Text style={s.approveText}>NEXT</Text></Pressable>
+          </View>
+        </View>}
+
+        {!!demoScenario?.stages.length&&<View style={s.panel}>
+          <View style={s.panelHead}><View><Text style={s.panelOverline}>STORYBOARD</Text><Text style={s.panelTitle}>Eight-step demo flow</Text></View><Text style={s.panelMeta}>Click any stage</Text></View>
+          <View style={s.relationshipGrid}>{demoScenario.stages.map(stage=><Pressable key={stage.id} onPress={()=>jumpDemo(stage.id)} style={[s.relationshipChip,stage.state==='active'&&{borderColor:P.lilac,backgroundColor:'#F4F0FF'}]}><View style={[s.relationshipDot,{backgroundColor:stage.state==='complete'?P.mint:stage.state==='active'?P.lilac:P.muted2}]}/><Text style={s.relationshipText}>{stage.order+1}. {stage.title}</Text><Text style={s.relationshipSource}>{stage.state}</Text></Pressable>)}</View>
+        </View>}
+      </>}
+
       {page==='settings' && <>
         <SectionTitle overline="LOCAL CONNECTION" title="Connect NEXUS to your lab" />
         <Text style={s.pageIntro}>The web UI talks to your local Node gateway. Packet Tracer stays open with NEXUS-CTRL Real World Access listening on port 58000.</Text>
@@ -662,6 +770,7 @@ const s = StyleSheet.create({
   heroGrid:{gap:14,marginBottom:14},heroMain:{flex:1.6,minHeight:330,borderWidth:1,borderColor:P.borderStrong,borderRadius:28,padding:30,justifyContent:'center',shadowColor:'#66758C',shadowOpacity:.08,shadowRadius:24,shadowOffset:{width:0,height:10}},heroBadge:{flexDirection:'row',alignItems:'center',gap:8,marginBottom:20},heroBadgeDot:{width:7,height:7,borderRadius:7,backgroundColor:P.mint},heroBadgeText:{color:'#12876A',fontSize:8,fontWeight:'900',letterSpacing:1.5},heroTitle:{color:P.text,fontSize:42,lineHeight:50,fontWeight:'900',letterSpacing:-1.2},heroTitleAccent:{color:P.lilac},heroText:{color:P.text2,fontSize:11.5,lineHeight:19,maxWidth:650,marginTop:14},heroActions:{flexDirection:'row',gap:10,marginTop:24,flexWrap:'wrap'},
   primary:{backgroundColor:'#25C39B',borderRadius:12,paddingHorizontal:16,paddingVertical:12,flexDirection:'row',alignItems:'center',gap:9},primaryText:{color:'#172033',fontSize:9.5,fontWeight:'900',letterSpacing:.6},secondary:{borderWidth:1,borderColor:'#C8D2E0',backgroundColor:'#FFFFFF',borderRadius:12,paddingHorizontal:16,paddingVertical:12,flexDirection:'row',alignItems:'center',gap:8},secondaryText:{color:'#5449E8',fontSize:9.5,fontWeight:'900',letterSpacing:.5},
   pulseCard:{flex:1,minWidth:300,borderWidth:1,borderColor:P.border,borderRadius:28,backgroundColor:'rgba(255,255,255,.96)',padding:20,shadowColor:'#66758C',shadowOpacity:.08,shadowRadius:24,shadowOffset:{width:0,height:10}},pulseTop:{flexDirection:'row',justifyContent:'space-between',gap:12,alignItems:'flex-start'},pulseTitle:{color:'#0F1B2D',fontSize:16,fontWeight:'900',marginTop:5},orbWrap:{alignItems:'center',justifyContent:'center',flex:1,minHeight:190},pulseFooter:{flexDirection:'row',justifyContent:'space-around',borderTopWidth:1,borderTopColor:P.border,paddingTop:14},pulseNumber:{color:P.text,fontSize:21,fontWeight:'900',textAlign:'center'},pulseLabel:{color:'#65748A',fontSize:8.5,marginTop:3,textAlign:'center'},
+  progressTrack:{height:7,borderRadius:7,backgroundColor:'#E5EBF3',overflow:'hidden'},progressFill:{height:'100%',borderRadius:7,backgroundColor:P.mint},
   metricGrid:{gap:10,marginBottom:24},metric:{flex:1,minHeight:126,borderWidth:1,borderColor:P.border,backgroundColor:'rgba(255,255,255,.90)',borderRadius:20,padding:16,shadowColor:'#65748A',shadowOpacity:.07,shadowRadius:16,shadowOffset:{width:0,height:8}},metricTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},metricIcon:{width:34,height:34,borderRadius:10,alignItems:'center',justifyContent:'center'},metricTrend:{fontSize:7,fontWeight:'900',letterSpacing:.8},metricValue:{color:P.text,fontSize:25,fontWeight:'900',marginTop:15},metricLabel:{color:'#607086',fontSize:9.5,marginTop:4},
   insightGrid:{gap:10,marginBottom:18},
   insightCard:{flex:1,minWidth:220,borderWidth:1,borderColor:P.border,backgroundColor:'rgba(255,255,255,.94)',borderRadius:20,padding:16,shadowColor:'#66758C',shadowOpacity:.06,shadowRadius:15,shadowOffset:{width:0,height:8}},

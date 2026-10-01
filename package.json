@@ -1,6 +1,6 @@
 {
   "name": "nexus-ai-network-command-center",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "main": "index.ts",
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
@@ -27,7 +27,10 @@
     "seed": "node scripts/seed.mjs",
     "server": "node server/index.mjs",
     "test": "node --test server/*.test.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "android:prebuild": "expo prebuild --platform android --clean",
+    "android:apk:windows": "expo prebuild --platform android --clean && cd android && gradlew.bat assembleRelease",
+    "android:apk:linux": "expo prebuild --platform android --clean && cd android && ./gradlew assembleRelease"
   },
   "private": true
 }
