@@ -507,15 +507,23 @@ const nav:{id:MobilePage;label:string;icon:IconName}[]=[
 ];
 
 export function MobileExperience(props:Props) {
-  const {page,setPage,live,network,topology,security,incidents,serverHealth,actions,incidentMode,setIncidentMode,busy,prompt,setPrompt,run,editEndpoint,setEditEndpoint,editPair,setEditPair,onConnect,onRefresh,onSubmit,onCreatePlan,onDecidePlan,notice,clearNotice}=props;
+  const {page,setPage,live,network,topology,security,incidents,serverHealth,actions,incidentCases,changes,incidentMode,setIncidentMode,busy,prompt,setPrompt,run,editEndpoint,setEditEndpoint,editPair,setEditPair,onConnect,onRefresh,onSubmit,onCreatePlan,onDecidePlan,onOpenIncident,onCloseIncident,notice,clearNotice}=props;
+  const scrollRef=useRef<ScrollView>(null);
+
+  useEffect(()=>{
+    if(page!=='agent'||!run) return;
+    const timer=setTimeout(()=>scrollRef.current?.scrollToEnd({animated:true}),180);
+    return()=>clearTimeout(timer);
+  },[page,run?.status,run?.answer,run?.events.length]);
+
   return <SafeAreaView style={s.root} edges={['top','bottom']}>
     <MobileHeader live={live} onConnect={()=>setPage('settings')}/>
     {!!notice&&<Pressable onPress={clearNotice} style={s.notice}><Icon name="info" size={14} color={C.amber}/><Text style={s.noticeText} numberOfLines={2}>{notice}</Text><Icon name="x" size={14} color={C.muted}/></Pressable>}
-    <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
-      {page==='home'&&<Home live={live} network={network} topology={topology} security={security} setPage={setPage}/>}
-      {page==='dashboard'&&<Overview network={network} topology={topology} security={security}/>}
+    <ScrollView ref={scrollRef} style={s.scroll} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
+      {page==='home'&&<Home live={live} network={network} topology={topology} security={security} changes={changes} setPage={setPage}/>}
+      {page==='dashboard'&&<Overview network={network} topology={topology} security={security} changes={changes}/>}
       {page==='topology'&&<Fabric topology={topology} incidentMode={incidentMode} setIncidentMode={setIncidentMode}/>}
-      {page==='security'&&<Defend security={security} incidents={incidents} actions={actions} onCreatePlan={onCreatePlan} onDecidePlan={onDecidePlan}/>}
+      {page==='security'&&<Defend security={security} incidentCases={incidentCases} actions={actions} onCreatePlan={onCreatePlan} onDecidePlan={onDecidePlan} onOpenIncident={onOpenIncident} onCloseIncident={onCloseIncident}/>}
       {page==='agent'&&<Agent live={live} serverHealth={serverHealth} busy={busy} prompt={prompt} setPrompt={setPrompt} run={run} onSubmit={onSubmit}/>}
       {page==='settings'&&<Connect live={live} editEndpoint={editEndpoint} setEditEndpoint={setEditEndpoint} editPair={editPair} setEditPair={setEditPair} onConnect={onConnect} busy={busy} serverHealth={serverHealth}/>}
     </ScrollView>
