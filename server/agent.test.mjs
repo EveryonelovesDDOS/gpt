@@ -53,3 +53,27 @@ test('HTTP interface rejects requests without pairing token', async () => {
     assert.equal(accepted.status, 200);
   } finally { server.close(); }
 });
+
+
+test('network health questions produce a substantive evidence-based answer even when model final is generic', async () => {
+  const networkClient = {
+    async getNetworkHealth() {
+      return { controllerOnline:true, deviceCount:2, reachableCount:2, unreachableCount:0, allReachable:true, hostCount:6, securityPosture:'critical', alertCount:2, devices:[] };
+    },
+    async getSecurityAnalysis() {
+      return { posture:'critical', alertCount:2, criticalCount:1, highCount:1, hostCount:6, alerts:[{ id:'lab', detail:'Simulation marker only.' }] };
+    },
+  };
+  const fetcher = async () => ({ ok:true, status:200, json:async()=>({ message:{ role:'assistant', content:'任务已完成。' } }) });
+  const agent = createAgent({ root, model:'mock', fetcher, networkClient });
+  const run = agent.start('Is my network healthy?');
+  const done = await wait(() => {
+    const current = agent.get(run.id);
+    return current.status === 'completed' ? current : null;
+  });
+  assert.match(done.answer, /OBSERVED/);
+  assert.match(done.answer, /2\/2/);
+  assert.match(done.answer, /critical/i);
+  assert.equal(done.evidence.length >= 2, true);
+  assert.equal(done.events.some(event => event.detail.includes('{"')), false);
+});
