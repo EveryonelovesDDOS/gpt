@@ -1,4 +1,4 @@
-import { AgentRun, DefensiveAction, Health, IncidentCase, IncidentTimeline, NetworkDevice, NetworkHealth, NetworkHost, NetworkTopology, SecurityAnalysis, TelemetrySnapshot } from './types';
+import { AgentRun, BlastRadius, DefensiveAction, DigitalTwin, Health, IncidentCase, IncidentTimeline, NetworkDevice, NetworkHealth, NetworkHost, NetworkTopology, PathAnalysis, SecurityAnalysis, TelemetrySnapshot } from './types';
 
 export const defaultEndpoint = () => {
   if (typeof window !== 'undefined' && window.location?.protocol?.startsWith('http')) {
@@ -37,6 +37,10 @@ export const getNetworkHealth = (base: string, token: string) => request<Network
 export const getNetworkHosts = (base: string, token: string) => request<{ hosts: NetworkHost[] }>(base, '/api/network/hosts', token);
 export const getNetworkTopology = (base: string, token: string) => request<NetworkTopology>(base, '/api/network/topology', token);
 export const getSecurityAnalysis = (base: string, token: string) => request<SecurityAnalysis>(base, '/api/network/security', token);
+export const getDigitalTwin = (base:string, token:string) => request<DigitalTwin>(base, '/api/network/digital-twin', token);
+export const analyzePath = (base:string, token:string, source:string, target:string) => request<PathAnalysis>(base, '/api/network/path', token, 'POST', { source, target });
+export const getBlastRadius = (base:string, token:string, asset:string, depth=3) => request<BlastRadius>(base, '/api/network/blast-radius', token, 'POST', { asset, depth });
+export const getConnectedAssets = (base:string, token:string, asset:string) => request<{ found:boolean; asset:unknown; neighbors:unknown[]; generatedAt:string }>(base, '/api/network/connected-assets', token, 'POST', { asset });
 
 export const getIncidents = (base: string, token: string) => request<IncidentTimeline>(base, '/api/incidents', token);
 export const getIncidentCases = (base: string, token: string) => request<{ cases: IncidentCase[] }>(base, '/api/incidents/cases', token);
@@ -46,3 +50,8 @@ export const getTelemetryChanges = (base: string, token: string) => request<Tele
 export const getActions = (base: string, token: string) => request<{ proposals: DefensiveAction[] }>(base, '/api/actions', token);
 export const proposeAction = (base: string, token: string, kind: string, incidentCaseId = '') => request<DefensiveAction>(base, '/api/actions/propose', token, 'POST', { kind, incidentCaseId });
 export const decideAction = (base: string, token: string, id: string, approved: boolean) => request<DefensiveAction>(base, `/api/actions/${id}/decision`, token, 'POST', { approved });
+
+export const simulateAction = (base:string, token:string, id:string) => request<DefensiveAction>(base, `/api/actions/${id}/simulate`, token, 'POST');
+export const markActionApplied = (base:string, token:string, id:string) => request<DefensiveAction>(base, `/api/actions/${id}/applied`, token, 'POST');
+export const verifyAction = (base:string, token:string, id:string) => request<DefensiveAction>(base, `/api/actions/${id}/verify`, token, 'POST');
+export const requestActionRollback = (base:string, token:string, id:string) => request<DefensiveAction>(base, `/api/actions/${id}/rollback`, token, 'POST');
