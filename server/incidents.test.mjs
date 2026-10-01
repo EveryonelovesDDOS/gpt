@@ -117,3 +117,22 @@ test('verified action loop keeps execution human-controlled and checks live evid
   assert.equal(rollback.rollbackState, 'operator-required');
   assert.equal(rollback.lifecycle.some(x => x.step === 'rollback-ready'), true);
 });
+
+
+test('assistive autopilot prepares high-priority incidents but respects human closure', async () => {
+  const manager = createIncidentManager({ networkClient });
+  const first = await manager.getTimeline();
+  const prepared = first.cases.find(item => item.autopilot?.autoOpened);
+  assert.ok(prepared);
+  assert.equal(prepared.autopilot.mode, 'assistive');
+  assert.equal(prepared.autopilot.humanApprovalRequired, true);
+  assert.equal(first.current.autoOpenedCaseIds.includes(prepared.id), true);
+
+  const closed = manager.closeCase(prepared.id);
+  assert.equal(closed.status, 'closed');
+  assert.equal(closed.autopilot.status, 'closed-by-human');
+
+  const second = await manager.getTimeline();
+  const activeForAlert = second.cases.filter(item => item.alertId === prepared.alertId && item.status !== 'closed');
+  assert.equal(activeForAlert.length, 0);
+});
