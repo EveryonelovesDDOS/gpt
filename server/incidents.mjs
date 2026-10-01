@@ -5,6 +5,7 @@ export function createIncidentManager({ networkClient, digitalTwin = null, telem
   const proposals = new Map();
   const incidentRegistry = new Map();
   const cases = new Map();
+  const autopilotSuppressed = new Set();
 
   const nowIso = () => new Date().toISOString();
   const activeCaseForAlert = alertId => [...cases.values()].find(item => item.alertId === alertId && item.status !== 'closed');
@@ -96,7 +97,7 @@ export function createIncidentManager({ networkClient, digitalTwin = null, telem
   async function prepareAutopilotCases(analysis) {
     const candidates=(analysis.alerts || []).filter(alert =>
       ['critical','high'].includes(alert.severity) || alert.category === 'lab-threat-marker'
-    ).filter(alert => !activeCaseForAlert(alert.id));
+    ).filter(alert => !activeCaseForAlert(alert.id) && !autopilotSuppressed.has(alert.id));
     if (!candidates.length) return [];
 
     const [hosts, topology] = await Promise.all([
@@ -141,6 +142,7 @@ export function createIncidentManager({ networkClient, digitalTwin = null, telem
     for (const [id, incident] of incidentRegistry) {
       if (!seen.has(id) && incident.status === 'active') {
         incidentRegistry.set(id, { ...incident, status:'resolved', lastSeen:now });
+        autopilotSuppressed.delete(id);
         for (const [caseId, incidentCase] of cases) {
           if (incidentCase.alertId === id && incidentCase.status !== 'closed') {
             cases.set(caseId, {
@@ -212,6 +214,7 @@ export function createIncidentManager({ networkClient, digitalTwin = null, telem
     const incidentCase = cases.get(id);
     if (!incidentCase) throw new Error('Incident case not found');
     if (incidentCase.status === 'closed') return incidentCase;
+    autopilotSuppressed.add(incidentCase.alertId);
     const updated = {
       ...incidentCase,
       status:'closed',
