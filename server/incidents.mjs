@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 const severityRank = { critical: 4, high: 3, medium: 2, info: 1 };
 
-export function createIncidentManager({ networkClient }) {
+export function createIncidentManager({ networkClient, digitalTwin = null }) {
   const history = [];
   const proposals = new Map();
   const incidentRegistry = new Map();
@@ -242,6 +242,10 @@ export function createIncidentManager({ networkClient }) {
       status: 'pending',
       createdAt: new Date().toISOString(),
       note: 'NEXUS generates reversible change plans but does not push IOS configuration automatically because this Packet Tracer integration has no verified write transport.',
+      lifecycle: [{ at:new Date().toISOString(), step:'proposed', detail:'Reversible response plan generated.' }],
+      simulation: null,
+      verification: null,
+      rollbackState: 'ready',
     };
     proposals.set(proposal.id, proposal);
     if (incidentCaseId) {
@@ -258,6 +262,128 @@ export function createIncidentManager({ networkClient }) {
     proposal.status = approved ? 'approved-preview' : 'rejected';
     proposal.decidedAt = new Date().toISOString();
     proposal.approved = approved;
+    proposal.lifecycle = [...(proposal.lifecycle || []), {
+      at:proposal.decidedAt,
+      step:approved ? 'approved' : 'rejected',
+      detail:approved ? 'Human approved the plan for simulation / manual application. No IOS command was pushed.' : 'Human rejected the plan. No network change was made.',
+    }];
+    proposals.set(id, proposal);
+    return proposal;
+  }
+
+  async function simulate(id) {
+    const proposal = proposals.get(id);
+    if (!proposal) throw new Error('Action proposal not found');
+    if (!['approved-preview','simulated','verification-pending','verification-limited','verification-failed','verified'].includes(proposal.status)) throw new Error('Approve the response plan before simulation');
+
+    const [twin, security, hosts] = await Promise.all([
+      digitalTwin ? digitalTwin.build() : null,
+      networkClient.getSecurityAnalysis(),
+      networkClient.getHosts(),
+    ]);
+    const attacker = hosts.find(host => host.labThreatMarker);
+    const expected = proposal.kind === 'quarantine_attacker_port'
+      ? {
+          outcome:'The lab threat-marker host should disappear from controller host inventory or cease to be observed on the quarantined access attachment.',
+          measurable:['ATTACKER-PC host visibility','Current host attachment / zone'],
+        }
+      : proposal.kind === 'isolate_guest_from_server'
+        ? {
+            outcome:'Guest-to-server traffic should be denied by policy while unrelated traffic remains unchanged.',
+            measurable:['Policy intent is known','ACL enforcement is not exposed by this controller API'],
+          }
+        : {
+            outcome:'Guest-to-management traffic should be denied by policy.',
+            measurable:['Policy intent is known','ACL enforcement is not exposed by this controller API'],
+          };
+
+    proposal.simulation = {
+      at:new Date().toISOString(),
+      before:{
+        posture:security.posture,
+        alertCount:security.alertCount,
+        attacker:attacker ? { name:attacker.name, ip:attacker.ip, zone:attacker.zone, vlan:attacker.vlan, interface:attacker.connectedInterface } : null,
+        twinAssets:twin?.nodes?.length ?? null,
+        twinRelationships:twin?.links?.length ?? null,
+      },
+      expected,
+      result:'safe-preview',
+      limitation:'Simulation predicts intent and measurable observations only. It does not emulate IOS packet forwarding or prove ACL enforcement.',
+    };
+    proposal.status = 'simulated';
+    proposal.lifecycle = [...(proposal.lifecycle || []), { at:proposal.simulation.at, step:'simulated', detail:'Expected outcome and verification evidence were prepared without changing the network.' }];
+    proposals.set(id, proposal);
+    return proposal;
+  }
+
+  function markApplied(id) {
+    const proposal = proposals.get(id);
+    if (!proposal) throw new Error('Action proposal not found');
+    if (!['approved-preview','simulated','verification-failed','verification-limited'].includes(proposal.status)) throw new Error('The action is not ready to be marked as manually applied');
+    const at=new Date().toISOString();
+    proposal.status='verification-pending';
+    proposal.appliedExternallyAt=at;
+    proposal.lifecycle=[...(proposal.lifecycle || []), { at, step:'manual-apply', detail:'Operator reported that the preview commands were applied externally. NEXUS did not execute them.' }];
+    proposals.set(id, proposal);
+    return proposal;
+  }
+
+  async function verify(id) {
+    const proposal = proposals.get(id);
+    if (!proposal) throw new Error('Action proposal not found');
+    if (!proposal.approved) throw new Error('Only an approved plan can enter verification');
+
+    const [hosts, security, twin] = await Promise.all([
+      networkClient.getHosts(),
+      networkClient.getSecurityAnalysis(),
+      digitalTwin ? digitalTwin.build() : null,
+    ]);
+    const attacker=hosts.find(host => host.labThreatMarker);
+    const at=new Date().toISOString();
+    let outcome='limited';
+    let status='verification-limited';
+    let detail='The current controller API does not expose enough forwarding or ACL state to prove this policy change.';
+
+    if (proposal.kind==='quarantine_attacker_port') {
+      if (!attacker) {
+        outcome='verified-observation';
+        status='verified';
+        detail='The lab threat-marker host is no longer present in current controller host inventory. This supports containment, although it does not independently prove the exact IOS command applied.';
+      } else {
+        outcome='not-observed';
+        status='verification-failed';
+        detail=`The lab threat-marker host is still visible at ${attacker.ip || 'unknown IP'} on ${attacker.connectedInterface || 'an unreported interface'}.`;
+      }
+    } else {
+      const rule=twin?.policy?.find(item => proposal.kind==='isolate_guest_from_server'
+        ? item.id==='guest-server-isolation'
+        : item.id==='guest-management-isolation');
+      detail=rule?.reason || detail;
+    }
+
+    proposal.status=status;
+    proposal.verification={
+      at,
+      outcome,
+      detail,
+      observed:{
+        posture:security.posture,
+        alertCount:security.alertCount,
+        attacker:attacker ? { name:attacker.name, ip:attacker.ip, zone:attacker.zone, vlan:attacker.vlan, interface:attacker.connectedInterface } : null,
+      },
+    };
+    proposal.lifecycle=[...(proposal.lifecycle || []), { at, step:'verified', detail }];
+    proposals.set(id, proposal);
+    return proposal;
+  }
+
+  function requestRollback(id) {
+    const proposal=proposals.get(id);
+    if (!proposal) throw new Error('Action proposal not found');
+    if (!proposal.approved) throw new Error('Rollback is only relevant after an approved plan');
+    const at=new Date().toISOString();
+    proposal.rollbackState='operator-required';
+    proposal.lifecycle=[...(proposal.lifecycle || []), { at, step:'rollback-ready', detail:'Rollback commands are ready for manual application. NEXUS did not execute them.' }];
     proposals.set(id, proposal);
     return proposal;
   }
@@ -266,5 +392,5 @@ export function createIncidentManager({ networkClient }) {
     return [...proposals.values()].sort((a,b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
   }
 
-  return { getTimeline, openCase, closeCase, getCase, listCases, propose, decide, listProposals };
+  return { getTimeline, openCase, closeCase, getCase, listCases, propose, decide, simulate, markApplied, verify, requestRollback, listProposals };
 }
