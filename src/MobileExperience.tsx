@@ -855,8 +855,11 @@ function Experience(props:Props) {
     const nonce=Date.now();
     if(action.type==='focus-twin' && action.payload.asset) setTwinIntent({type:'focus',asset:action.payload.asset,nonce});
     if(action.type==='show-blast-radius' && action.payload.asset) setTwinIntent({type:'blast',asset:action.payload.asset,nonce});
+    if(action.type==='show-failure-impact' && action.payload.asset) setTwinIntent({type:'failure',asset:action.payload.asset,nonce});
+    if(action.type==='show-confidence') setTwinIntent({type:'confidence',nonce});
+    if(action.type==='show-policy' && action.payload.sourceZone && action.payload.targetZone) setTwinIntent({type:'policy',sourceZone:action.payload.sourceZone,targetZone:action.payload.targetZone,nonce});
     if(action.type==='show-path' && action.payload.source && action.payload.target) setTwinIntent({type:'path',source:action.payload.source,target:action.payload.target,nonce});
-    if(['focus-twin','show-blast-radius','show-path'].includes(action.type)) setPage('topology');
+    if(['focus-twin','show-blast-radius','show-failure-impact','show-confidence','show-policy','show-path'].includes(action.type)) setPage('topology');
   }
 
   useEffect(()=>{if(page!=='agent'||!run)return;const t=setTimeout(()=>scrollRef.current?.scrollToEnd({animated:true}),180);return()=>clearTimeout(t);},[page,run?.status,run?.answer,run?.events.length]);
