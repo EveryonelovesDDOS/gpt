@@ -63,3 +63,42 @@ test('blast radius returns adjacent critical assets with an explicit limitation'
   assert.equal(result.affected.some(a=>a.label==='SERVER'&&a.critical),true);
   assert.match(result.note,/not proof/i);
 });
+
+
+test('operations overview ranks attention, audits evidence and detects graph single points of failure', async () => {
+  const twin=createDigitalTwin({networkClient});
+  const model=await twin.build();
+  assert.equal(model.operations.attention[0].label,'ATTACKER-PC');
+  assert.equal(model.operations.attention[0].score >= 50,true);
+  assert.equal(model.operations.confidenceAudit.observed,2);
+  assert.equal(model.operations.confidenceAudit.knownLab,1);
+  assert.equal(model.operations.singlePointsOfFailure.some(item=>item.label==='CORE-SW'),true);
+  assert.equal(model.operations.policyChecks.find(item=>item.id==='guest-server-isolation').relationshipPath,true);
+});
+
+test('failure impact simulates graph separation without claiming real device failure', async () => {
+  const twin=createDigitalTwin({networkClient});
+  const result=await twin.failureImpact('CORE-SW');
+  assert.equal(result.found,true);
+  assert.equal(result.severity,'high');
+  assert.equal(result.affected.some(item=>item.label==='SERVER'&&item.critical),true);
+  assert.match(result.note,/what-if graph dependency simulation/i);
+  assert.match(result.note,/does not shut down/i);
+});
+
+test('resilience paths report graph redundancy rather than packet routing', async () => {
+  const twin=createDigitalTwin({networkClient});
+  const result=await twin.resiliencePaths('ATTACKER-PC','SERVER',3);
+  assert.equal(result.found,true);
+  assert.equal(result.redundancy,'single');
+  assert.deepEqual(result.paths[0].hops,['ATTACKER-PC','CORE-SW','SERVER']);
+  assert.match(result.note,/not verified routing/i);
+});
+
+test('policy audit preserves the enforcement limitation', async () => {
+  const twin=createDigitalTwin({networkClient});
+  const result=await twin.policyAudit();
+  assert.equal(result.confidence,'not-verified');
+  assert.equal(result.checks.some(item=>item.sourceZone==='GUEST'&&item.targetZone==='SERVER'),true);
+  assert.match(result.note,/does not prove ACL or routing enforcement/i);
+});

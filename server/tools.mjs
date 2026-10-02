@@ -15,6 +15,9 @@ export const definitions = [
   { type: 'function', function: { name: 'analyze_network_path', description: 'Analyze the relationship path between two assets in the current digital twin. This explicitly distinguishes graph adjacency from verified IP reachability.', parameters: { type: 'object', properties: { source: { type:'string' }, target:{ type:'string' } }, required:['source','target'] } } },
   { type: 'function', function: { name: 'get_blast_radius', description: 'Estimate graph-adjacent assets that depend on or connect through an asset. This is dependency/adjoining context, not proof of compromise propagation.', parameters: { type: 'object', properties: { asset:{ type:'string' }, depth:{ type:'number' } }, required:['asset'] } } },
   { type: 'function', function: { name: 'get_connected_assets', description: 'List the assets directly connected to a named device or host in the current digital twin, with evidence certainty.', parameters: { type:'object', properties:{ asset:{type:'string'} }, required:['asset'] } } },
+  { type: 'function', function: { name: 'simulate_asset_failure', description: 'Run a reversible what-if graph simulation for a named asset becoming unavailable. This never shuts down a real device and only reports graph separation/dependency impact.', parameters: { type:'object', properties:{ asset:{type:'string'} }, required:['asset'] } } },
+  { type: 'function', function: { name: 'get_resilience_paths', description: 'Find up to a few alternate relationship paths between two assets to assess graph redundancy. These are not verified routing or forwarding paths.', parameters: { type:'object', properties:{ source:{type:'string'}, target:{type:'string'}, maxPaths:{type:'number'} }, required:['source','target'] } } },
+  { type: 'function', function: { name: 'audit_segmentation_policy', description: 'Review NEXUS segmentation policy expectations against current graph relationships while explicitly keeping enforcement unverified.', parameters: { type:'object', properties:{} } } },
   { type: 'function', function: { name: 'write_file', description: 'Create or update one .md or .txt document in the local workspace. Requires user approval.', parameters: { type: 'object', properties: { path: { type: 'string' }, content: { type: 'string' } }, required: ['path', 'content'] } } },
 ];
 
@@ -107,6 +110,15 @@ export async function executeTool(root, name, args, { networkClient, digitalTwin
     case 'get_connected_assets':
       if (!digitalTwin) throw new Error('NEXUS digital twin is unavailable');
       return JSON.stringify(await digitalTwin.connectedTo(args.asset));
+    case 'simulate_asset_failure':
+      if (!digitalTwin) throw new Error('NEXUS digital twin is unavailable');
+      return JSON.stringify(await digitalTwin.failureImpact(args.asset));
+    case 'get_resilience_paths':
+      if (!digitalTwin) throw new Error('NEXUS digital twin is unavailable');
+      return JSON.stringify(await digitalTwin.resiliencePaths(args.source, args.target, Math.max(1, Math.min(5, Number(args.maxPaths || 3)))));
+    case 'audit_segmentation_policy':
+      if (!digitalTwin) throw new Error('NEXUS digital twin is unavailable');
+      return JSON.stringify(await digitalTwin.policyAudit());
     case 'write_file': return await writeDocument(root, args.path, args.content);
   }
 }

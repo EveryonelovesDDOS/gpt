@@ -3,12 +3,12 @@ export type AgentEvent = { id: string; kind: EventKind; title: string; detail: s
 export type AgentEvidence = { tool: string; summary: string; at: string };
 export type AgentAction = {
   id:string;
-  type:'open-incident'|'show-path'|'show-blast-radius'|'focus-twin'|'ask';
+  type:'open-incident'|'show-path'|'show-blast-radius'|'show-failure-impact'|'show-policy'|'show-confidence'|'focus-twin'|'ask';
   label:string;
   description:string;
   icon:string;
   tone:'danger'|'violet'|'amber'|'mint'|'neutral';
-  payload:{ alertId?:string; source?:string; target?:string; asset?:string; prompt?:string };
+  payload:{ alertId?:string; source?:string; target?:string; asset?:string; prompt?:string; sourceZone?:string; targetZone?:string };
 };
 export type AgentRun = {
   id: string;
@@ -182,6 +182,13 @@ export type DigitalTwin = {
   policy:{ id:string; sourceZone:string; targetZone:string; expectation:string; verification:string; reason:string }[];
   securitySummary:{ posture:string; alertCount:number; criticalCount:number; highCount:number };
   confidence:{ physicalTopology:string; endpointAttachments:string; policyEnforcement:string };
+  operations:{
+    attention:{ id:string; label:string; zone:string; trustTier:string; critical:boolean; degree:number; score:number; reasons:string[] }[];
+    singlePointsOfFailure:{ id:string; label:string; zone:string; componentIncrease:number; separatedAssets:string[]; criticalSeparated:string[] }[];
+    policyChecks:{ id:string; sourceZone:string; targetZone:string; expectation:string; verification:string; relationshipPath:boolean; sourceAssets:string[]; targetAssets:string[]; assessment:string }[];
+    confidenceAudit:{ totalLinks:number; observed:number; knownLab:number; inferred:number; weakLinks:{ id:string; source:string; target:string; label:string }[] };
+    note:string;
+  };
 };
 export type PathAnalysis = {
   found:boolean;
@@ -246,5 +253,36 @@ export type DemoScenario = {
   stages:DemoScenarioStage[];
   events:{ id:string; at:string; kind:string; title:string; detail:string }[];
   guardrails:string[];
+  generatedAt:string;
+};
+
+
+export type FailureImpact = {
+  found:boolean;
+  asset:string|{id:string;label:string;zone:string;role:string};
+  scenario?:string;
+  severity?:'low'|'medium'|'high'|string;
+  components?:{ id:string; assets:string[] }[];
+  affected?:{ id:string; label:string; zone:string; critical:boolean; trustTier:string }[];
+  criticalAffected?:{ id:string; label:string; zone:string; critical:boolean; trustTier:string }[];
+  note?:string;
+  generatedAt:string;
+};
+
+export type ResiliencePaths = {
+  found:boolean;
+  source:string;
+  target:string;
+  redundancy?:'none'|'single'|'multiple'|string;
+  pathCount?:number;
+  paths:{ id:string; hops:string[]; length:number }[];
+  note?:string;
+  generatedAt:string;
+};
+
+export type PolicyAudit = {
+  checks:DigitalTwin['operations']['policyChecks'];
+  confidence:string;
+  note:string;
   generatedAt:string;
 };

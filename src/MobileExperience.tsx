@@ -119,6 +119,12 @@ function makeStyles(T:Palette) {
     answer:{marginTop:13,borderRadius:16,backgroundColor:T.violetSoft,borderWidth:1,borderColor:T.violet+'44',padding:11},answerHead:{flexDirection:'row',alignItems:'center',gap:8},answerLogo:{width:32,height:32,borderRadius:11,backgroundColor:T.violet,alignItems:'center',justifyContent:'center'},answerLogoText:{color:'#FFFFFF',fontSize:13,fontWeight:'900'},answerKicker:{color:T.violet,fontSize:6.3,fontWeight:'900',letterSpacing:.9},answerMeta:{color:T.faint,fontSize:6.3,marginTop:2},answerSections:{gap:8,marginTop:10},answerSection:{backgroundColor:T.surface,borderRadius:12,borderWidth:1,borderColor:T.line,padding:9},answerSectionHead:{flexDirection:'row',alignItems:'center',gap:6},answerSectionIcon:{width:25,height:25,borderRadius:8,alignItems:'center',justifyContent:'center'},answerSectionLabel:{fontSize:6.4,fontWeight:'900',letterSpacing:.7},answerSectionText:{color:T.text,fontSize:8.3,lineHeight:13.5,marginTop:6},followups:{marginTop:10,gap:6},followup:{borderRadius:11,borderWidth:1,borderColor:T.line,backgroundColor:T.surface,padding:9,flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},followupText:{color:T.text,fontSize:7.6,fontWeight:'800',flex:1},aiEmpty:{backgroundColor:T.surface,borderWidth:1,borderColor:T.line,borderRadius:18,padding:22,alignItems:'center'},aiEmptyIcon:{width:46,height:46,borderRadius:15,backgroundColor:T.violetSoft,alignItems:'center',justifyContent:'center'},aiEmptyTitle:{color:T.ink,fontSize:10.5,fontWeight:'900',marginTop:9},aiEmptyText:{color:T.muted,fontSize:8,lineHeight:12.5,textAlign:'center',marginTop:4,maxWidth:280},
     twinGraphCard:{backgroundColor:T.surface,borderWidth:1,borderColor:T.line,borderRadius:22,padding:13,overflow:'hidden'},
     twinGraphHead:{flexDirection:'row',justifyContent:'space-between',alignItems:'flex-start',gap:10},
+    assetSearchWrap:{height:42,borderRadius:12,borderWidth:1,borderColor:T.line,backgroundColor:T.surface2,flexDirection:'row',alignItems:'center',gap:7,paddingHorizontal:10,marginTop:11},
+    assetSearch:{flex:1,color:T.ink,fontSize:8.2},
+    searchResults:{marginTop:6,borderRadius:12,borderWidth:1,borderColor:T.line,backgroundColor:T.surface,overflow:'hidden'},
+    searchResult:{minHeight:43,paddingHorizontal:9,flexDirection:'row',alignItems:'center',gap:8,borderBottomWidth:1,borderBottomColor:T.line},
+    searchResultTitle:{color:T.ink,fontSize:8,fontWeight:'900'},
+    searchResultMeta:{color:T.muted,fontSize:6.6,marginTop:2},
     graphCanvas:{marginTop:12,position:'relative',backgroundColor:T.surface2,borderWidth:1,borderColor:T.line,borderRadius:18,overflow:'hidden'},
     graphLine:{position:'absolute',height:0,transformOrigin:'center'},
     graphNode:{position:'absolute',borderRadius:12,borderWidth:1.4,paddingHorizontal:7,paddingVertical:6,alignItems:'center',justifyContent:'center',shadowColor:T.shadow,shadowOpacity:.05,shadowRadius:8},
@@ -137,11 +143,39 @@ function makeStyles(T:Palette) {
     assetFact:{flex:1,backgroundColor:T.surface2,borderWidth:1,borderColor:T.line,borderRadius:11,padding:8},
     assetFactLabel:{color:T.faint,fontSize:5.8,fontWeight:'900',letterSpacing:.7},
     assetFactValue:{color:T.text,fontSize:7.2,fontWeight:'800',marginTop:3},
-    graphControls:{flexDirection:'row',gap:6,marginTop:10},
-    graphControl:{flex:1,minHeight:39,borderWidth:1,borderColor:T.line,borderRadius:11,backgroundColor:T.surface2,alignItems:'center',justifyContent:'center',gap:4,paddingHorizontal:4},
+    graphControls:{flexDirection:'row',flexWrap:'wrap',gap:6,marginTop:10},
+    graphControl:{width:'31.8%',minHeight:42,borderWidth:1,borderColor:T.line,borderRadius:11,backgroundColor:T.surface2,alignItems:'center',justifyContent:'center',gap:4,paddingHorizontal:4},
     graphControlText:{color:T.text,fontSize:6.4,fontWeight:'900',textAlign:'center'},
     graphInsight:{marginTop:9,borderRadius:11,backgroundColor:T.blueSoft,borderWidth:1,borderColor:T.blue+'44',padding:9,flexDirection:'row',gap:7,alignItems:'flex-start'},
     graphInsightText:{color:T.text,fontSize:7.5,lineHeight:11.5,flex:1},
+
+    opsLab:{backgroundColor:T.surface,borderWidth:1,borderColor:T.line,borderRadius:22,padding:13},
+    opsLabHead:{flexDirection:'row',justifyContent:'space-between',alignItems:'flex-start',gap:10},
+    opsTitle:{color:T.ink,fontSize:15,fontWeight:'900',marginTop:4,maxWidth:250},
+    opsIntro:{color:T.muted,fontSize:7.8,lineHeight:12.4,marginTop:8},
+    opsQuickRow:{gap:7,paddingVertical:11,paddingRight:10},
+    opsQuick:{height:35,borderRadius:11,borderWidth:1,paddingHorizontal:9,flexDirection:'row',alignItems:'center',gap:6},
+    opsQuickText:{color:T.text,fontSize:6.5,fontWeight:'900'},
+    opsGrid:{gap:9},
+    opsPanel:{backgroundColor:T.surface2,borderWidth:1,borderColor:T.line,borderRadius:15,padding:10},
+    opsPanelHead:{flexDirection:'row',alignItems:'center',gap:8,marginBottom:4},
+    opsPanelIcon:{width:32,height:32,borderRadius:10,alignItems:'center',justifyContent:'center'},
+    opsPanelKicker:{color:T.faint,fontSize:5.7,fontWeight:'900',letterSpacing:.8},
+    opsPanelTitle:{color:T.ink,fontSize:9.1,fontWeight:'900',marginTop:2},
+    opsRow:{minHeight:47,flexDirection:'row',alignItems:'center',gap:8,paddingVertical:7},
+    opsScore:{width:31,height:31,borderRadius:10,alignItems:'center',justifyContent:'center'},
+    opsScoreText:{fontSize:8.3,fontWeight:'900'},
+    opsSmallIcon:{width:31,height:31,borderRadius:10,alignItems:'center',justifyContent:'center'},
+    opsRowTitle:{color:T.ink,fontSize:8.1,fontWeight:'900'},
+    opsRowMeta:{color:T.muted,fontSize:6.6,lineHeight:10.3,marginTop:2},
+    opsEmpty:{color:T.muted,fontSize:7.2,lineHeight:11.2,paddingVertical:8},
+    opsFoot:{color:T.faint,fontSize:6.5,lineHeight:10.5,marginTop:8},
+    confidenceBars:{gap:7,marginTop:7},
+    confidenceBarRow:{flexDirection:'row',alignItems:'center',gap:7},
+    confidenceBarLabel:{width:55,color:T.muted,fontSize:6.5,fontWeight:'800'},
+    confidenceBarTrack:{flex:1,height:6,borderRadius:6,backgroundColor:T.surface3,overflow:'hidden'},
+    confidenceBarFill:{height:'100%',borderRadius:6},
+    confidenceBarValue:{width:18,textAlign:'right',color:T.ink,fontSize:7,fontWeight:'900'},
 
     autopilotCard:{marginTop:11,marginBottom:13,borderWidth:1,borderColor:T.violet+'55',backgroundColor:T.violetSoft,borderRadius:14,padding:10},
     autopilotHead:{flexDirection:'row',alignItems:'center',gap:8},
@@ -258,7 +292,7 @@ function Header({live,themeMode,onToggleTheme,onConnect,onRefresh,onDemo}:{live:
   return <View style={s.header}>
     <View style={s.brandRow}>
       <LinearGradient colors={[T.mint,T.violet]} start={{x:0,y:0}} end={{x:1,y:1}} style={s.logo}><Text style={s.logoText}>N</Text></LinearGradient>
-      <View><Text style={s.brand}>NEXUS</Text><Text style={s.brandSub}>V12 · DEMO ENGINE</Text></View>
+      <View><Text style={s.brand}>NEXUS</Text><Text style={s.brandSub}>V13 · OPERATIONS LAB</Text></View>
     </View>
     <View style={s.headerActions}>
       <Pressable onPress={onRefresh} style={[s.livePill,{backgroundColor:live?T.mintSoft:T.surface2}]}>
@@ -357,14 +391,18 @@ type TwinIntent =
   | { type:'focus'; asset:string; nonce:number }
   | { type:'path'; source:string; target:string; nonce:number }
   | { type:'blast'; asset:string; nonce:number }
+  | { type:'failure'; asset:string; nonce:number }
+  | { type:'confidence'; nonce:number }
+  | { type:'policy'; sourceZone:string; targetZone:string; nonce:number }
   | null;
 
 function InteractiveTwinGraph({digitalTwin,intent}:{digitalTwin:DigitalTwin|null;intent:TwinIntent}) {
   const {T,s}=useTheme();
   const [width,setWidth]=useState(340);
   const [selected,setSelected]=useState('');
-  const [mode,setMode]=useState<'focus'|'neighbors'|'path'|'blast'>('focus');
+  const [mode,setMode]=useState<'focus'|'neighbors'|'path'|'blast'|'failure'|'confidence'|'policy'>('focus');
   const [pathTarget,setPathTarget]=useState('SERVER');
+  const [search,setSearch]=useState('');
 
   const nodes=digitalTwin?.nodes || [];
   const links=digitalTwin?.links || [];
@@ -400,9 +438,9 @@ function InteractiveTwinGraph({digitalTwin,intent}:{digitalTwin:DigitalTwin|null
     return map;
   },[nodes,links]);
 
-  const findPath=(sourceId:string,targetId:string)=>{
-    if(!sourceId||!targetId)return [] as string[];
-    const queue=[sourceId], seen=new Set([sourceId]), prev=new Map<string,string>();
+  const findPath=(sourceId:string,targetId:string,excluded='')=>{
+    if(!sourceId||!targetId||sourceId===excluded||targetId===excluded)return [] as string[];
+    const queue=[sourceId], seen=new Set([sourceId,excluded].filter(Boolean)), prev=new Map<string,string>();
     while(queue.length){
       const current=queue.shift()!;
       if(current===targetId)break;
@@ -417,6 +455,28 @@ function InteractiveTwinGraph({digitalTwin,intent}:{digitalTwin:DigitalTwin|null
     return out.reverse();
   };
 
+  const failureAffected=useMemo(()=>{
+    const ids=new Set<string>();
+    const asset=nodes.find(n=>n.id===selected);
+    if(mode!=='failure'||!asset)return ids;
+    const core=nodes.find(n=>n.role==='core-switch'&&n.id!==asset.id);
+    if(!core){
+      nodes.forEach(n=>{if(n.id!==asset.id)ids.add(n.id);});
+      return ids;
+    }
+    const reachable=new Set([core.id,asset.id]);
+    const queue=[core.id];
+    while(queue.length){
+      const current=queue.shift()!;
+      for(const edge of adjacency.get(current)||[]){
+        if(edge.id===asset.id||reachable.has(edge.id))continue;
+        reachable.add(edge.id);queue.push(edge.id);
+      }
+    }
+    nodes.forEach(n=>{if(n.id!==asset.id&&!reachable.has(n.id))ids.add(n.id);});
+    return ids;
+  },[mode,selected,nodes,adjacency]);
+
   useEffect(()=>{
     if(!intent||!digitalTwin)return;
     if(intent.type==='focus'){
@@ -425,9 +485,20 @@ function InteractiveTwinGraph({digitalTwin,intent}:{digitalTwin:DigitalTwin|null
     if(intent.type==='blast'){
       const node=resolve(intent.asset); if(node){setSelected(node.id);setMode('blast');}
     }
+    if(intent.type==='failure'){
+      const node=resolve(intent.asset); if(node){setSelected(node.id);setMode('failure');}
+    }
+    if(intent.type==='confidence'){
+      setMode('confidence');
+    }
     if(intent.type==='path'){
       const source=resolve(intent.source); const target=resolve(intent.target);
       if(source){setSelected(source.id);setMode('path');setPathTarget(target?.label||intent.target);}
+    }
+    if(intent.type==='policy'){
+      const source=nodes.find(n=>n.zone===intent.sourceZone);
+      const target=nodes.find(n=>n.zone===intent.targetZone);
+      if(source){setSelected(source.id);setPathTarget(target?.label||intent.targetZone);setMode('policy');}
     }
   },[intent?.nonce,digitalTwin?.generatedAt]);
 
@@ -440,13 +511,26 @@ function InteractiveTwinGraph({digitalTwin,intent}:{digitalTwin:DigitalTwin|null
 
   const selectedNode=nodes.find(n=>n.id===selected)||null;
   const targetNode=resolve(pathTarget);
-  const pathIds=mode==='path'&&selectedNode&&targetNode?findPath(selectedNode.id,targetNode.id):[];
+  const pathIds=(mode==='path'||mode==='policy')&&selectedNode&&targetNode?findPath(selectedNode.id,targetNode.id):[];
+  const policyRule=mode==='policy'&&selectedNode&&targetNode
+    ? digitalTwin?.policy.find(rule=>rule.sourceZone===selectedNode.zone&&rule.targetZone===targetNode.zone)
+      || digitalTwin?.policy.find(rule=>rule.sourceZone===targetNode.zone&&rule.targetZone===selectedNode.zone)
+    : null;
+
   const highlightIds=useMemo(()=>{
     const ids=new Set<string>();
+    if(mode==='confidence'){
+      links.filter(link=>link.certainty!=='observed').forEach(link=>{ids.add(link.source);ids.add(link.target);});
+      return ids;
+    }
     if(!selectedNode)return ids;
     ids.add(selectedNode.id);
     if(mode==='neighbors') for(const edge of adjacency.get(selectedNode.id)||[]) ids.add(edge.id);
     if(mode==='path') pathIds.forEach(id=>ids.add(id));
+    if(mode==='policy'){
+      nodes.filter(node=>node.zone===selectedNode.zone||node.zone===targetNode?.zone).forEach(node=>ids.add(node.id));
+      pathIds.forEach(id=>ids.add(id));
+    }
     if(mode==='blast'){
       const queue=[{id:selectedNode.id,depth:0}],seen=new Set([selectedNode.id]);
       while(queue.length){
@@ -458,46 +542,66 @@ function InteractiveTwinGraph({digitalTwin,intent}:{digitalTwin:DigitalTwin|null
         }
       }
     }
+    if(mode==='failure') failureAffected.forEach(id=>ids.add(id));
     return ids;
-  },[selectedNode?.id,mode,pathIds.join('|'),adjacency]);
+  },[selectedNode?.id,targetNode?.id,mode,pathIds.join('|'),adjacency,failureAffected,links,nodes]);
 
   const activeLink=(link:(typeof links)[number])=>{
     if(mode==='focus')return link.source===selectedNode?.id||link.target===selectedNode?.id;
+    if(mode==='confidence')return link.certainty!=='observed';
+    if(mode==='failure')return link.source===selectedNode?.id||link.target===selectedNode?.id||failureAffected.has(link.source)||failureAffected.has(link.target);
+    if(mode==='policy')return pathIds.includes(link.source)&&pathIds.includes(link.target);
     return highlightIds.has(link.source)&&highlightIds.has(link.target);
   };
   const canvasHeight=nodes.length>6?430:390;
   const nodeW=82,nodeH=48;
+  const failureCritical=[...failureAffected].map(id=>nodes.find(n=>n.id===id)).filter(Boolean).filter(n=>n!.critical).length;
+  const confidence=digitalTwin?.operations?.confidenceAudit;
+  const searchMatches=search.trim()
+    ? nodes.filter(node=>[node.label,node.ip,node.zone,node.role].some(value=>String(value||'').toLowerCase().includes(search.trim().toLowerCase()))).slice(0,5)
+    : [];
 
-  const modeText=selectedNode ? (
-    mode==='focus' ? `${selectedNode.label} selected · tap another asset to inspect it.` :
-    mode==='neighbors' ? `${selectedNode.label} has ${adjacency.get(selectedNode.id)?.length||0} direct graph relationship(s).` :
-    mode==='blast' ? `Blast-radius view highlights graph-adjacent assets within 2 hops. This is not proof of compromise propagation.` :
-    pathIds.length ? `Relationship path: ${pathIds.map(id=>nodes.find(n=>n.id===id)?.label).filter(Boolean).join(' → ')}. IP reachability remains unverified.` : `No graph relationship path found to ${pathTarget}.`
-  ) : 'Select an asset to inspect the digital twin.';
+  const modeText=mode==='confidence'
+    ? `Evidence audit: ${confidence?.observed||0} observed · ${confidence?.knownLab||0} known-lab · ${confidence?.inferred||0} inferred relationship(s).`
+    : selectedNode ? (
+      mode==='focus' ? `${selectedNode.label} selected · tap another asset to inspect it.` :
+      mode==='neighbors' ? `${selectedNode.label} has ${adjacency.get(selectedNode.id)?.length||0} direct graph relationship(s).` :
+      mode==='blast' ? 'Blast-radius view highlights graph-adjacent assets within 2 hops. This is not proof of compromise propagation.' :
+      mode==='failure' ? `What-if ${selectedNode.label} becomes unavailable: ${failureAffected.size} asset(s) lose graph connection to the core, including ${failureCritical} protected asset(s). No device is changed.` :
+      mode==='policy' ? `${selectedNode.zone} → ${targetNode?.zone||'target'} policy expects ${policyRule?.expectation||'review'}. A graph relationship ${pathIds.length?'exists':'was not found'}; enforcement remains unverified.` :
+      pathIds.length ? `Relationship path: ${pathIds.map(id=>nodes.find(n=>n.id===id)?.label).filter(Boolean).join(' → ')}. IP reachability remains unverified.` : `No graph relationship path found to ${pathTarget}.`
+    ) : 'Select an asset to inspect the digital twin.';
 
   if(!digitalTwin) return <View style={s.twinGraphCard}><Text style={s.twinTitle}>Interactive twin waiting for live data</Text><Text style={s.twinMeta}>Connect the local lab to render asset relationships.</Text></View>;
 
   return <View style={s.twinGraphCard}>
-    <View style={s.twinGraphHead}><View><Text style={s.eyebrow}>INTERACTIVE GRAPH</Text><Text style={s.twinTitle}>Tap an asset to inspect it</Text></View><View style={[s.badge,{backgroundColor:T.mintSoft}]}><View style={[s.statusDot,{backgroundColor:T.mint}]}/><Text style={[s.sectionAction,{color:T.mint}]}>LIVE</Text></View></View>
+    <View style={s.twinGraphHead}><View><Text style={s.eyebrow}>INTERACTIVE GRAPH</Text><Text style={s.twinTitle}>Tap, search and analyse assets</Text></View><View style={[s.badge,{backgroundColor:T.mintSoft}]}><View style={[s.statusDot,{backgroundColor:T.mint}]}/><Text style={[s.sectionAction,{color:T.mint}]}>LIVE</Text></View></View>
+
+    <View style={s.assetSearchWrap}><Icon name="search" size={13} color={T.muted}/><TextInput value={search} onChangeText={setSearch} placeholder="Find asset, IP, zone or role…" placeholderTextColor={T.faint} autoCapitalize="none" style={s.assetSearch}/>{!!search&&<Pressable onPress={()=>setSearch('')}><Icon name="x" size={13} color={T.faint}/></Pressable>}</View>
+    {!!searchMatches.length&&<View style={s.searchResults}>{searchMatches.map(node=><Pressable key={node.id} onPress={()=>{setSelected(node.id);setMode('focus');setSearch('');}} style={s.searchResult}><View style={[s.statusDot,{backgroundColor:node.labThreatMarker?T.coral:node.critical?T.violet:T.mint}]}/><View style={{flex:1}}><Text style={s.searchResultTitle}>{node.label}</Text><Text style={s.searchResultMeta}>{node.ip||node.managementIp||'no IP'} · {node.zone}</Text></View><Icon name="crosshair" size={12} color={T.violet}/></Pressable>)}</View>}
+
     <View onLayout={e=>setWidth(Math.max(280,e.nativeEvent.layout.width))} style={[s.graphCanvas,{height:canvasHeight}]}>
       {links.map(link=>{
         const a=positions.get(link.source),b=positions.get(link.target); if(!a||!b)return null;
         const x1=a.x*width,y1=a.y*canvasHeight,x2=b.x*width,y2=b.y*canvasHeight;
         const dx=x2-x1,dy=y2-y1,dist=Math.sqrt(dx*dx+dy*dy),angle=Math.atan2(dy,dx)*180/Math.PI;
         const active=activeLink(link);
-        const lineColor=active?T.violet:T.lineStrong;
+        const lineColor=mode==='failure'&&active?T.coral:mode==='confidence'&&active?T.amber:mode==='policy'&&active?T.blue:active?T.violet:T.lineStrong;
         const style=link.certainty==='observed'?'solid':link.certainty==='known-lab'?'dashed':'dotted';
-        return <View key={link.id} style={[s.graphLine,{left:(x1+x2)/2-dist/2,top:(y1+y2)/2,width:dist,borderTopColor:lineColor,borderTopWidth:active?2.5:1.3,borderStyle:style as any,opacity:active?1:.58,transform:[{rotateZ:`${angle}deg`}]}]}/>;
+        return <View key={link.id} style={[s.graphLine,{left:(x1+x2)/2-dist/2,top:(y1+y2)/2,width:dist,borderTopColor:lineColor,borderTopWidth:active?2.5:1.3,borderStyle:style as any,opacity:active?1:.48,transform:[{rotateZ:`${angle}deg`}]}]}/>;
       })}
       {nodes.map(node=>{
         const p=positions.get(node.id)!; const active=highlightIds.has(node.id)||node.id===selectedNode?.id;
         const danger=node.labThreatMarker||node.trustTier==='untrusted'; const critical=node.critical;
-        const color=danger?T.coral:critical?T.violet:node.kind==='device'?T.blue:T.mint;
-        const bg=danger?T.coralSoft:critical?T.violetSoft:node.kind==='device'?T.blueSoft:T.mintSoft;
+        const failureNode=mode==='failure'&&failureAffected.has(node.id);
+        const unavailable=mode==='failure'&&node.id===selectedNode?.id;
+        const weak=mode==='confidence'&&highlightIds.has(node.id);
+        const color=unavailable?T.coral:failureNode?T.amber:weak?T.amber:danger?T.coral:critical?T.violet:node.kind==='device'?T.blue:T.mint;
+        const bg=unavailable?T.coralSoft:failureNode?T.amberSoft:weak?T.amberSoft:danger?T.coralSoft:critical?T.violetSoft:node.kind==='device'?T.blueSoft:T.mintSoft;
         return <Pressable key={node.id} onPress={()=>{setSelected(node.id);setMode('focus');}} style={({pressed})=>[
-          s.graphNode,{left:p.x*width-nodeW/2,top:p.y*canvasHeight-nodeH/2,width:nodeW,minHeight:nodeH,borderColor:active?color:T.line,backgroundColor:active?bg:T.surface,opacity:pressed?0.86:1},
+          s.graphNode,{left:p.x*width-nodeW/2,top:p.y*canvasHeight-nodeH/2,width:nodeW,minHeight:nodeH,borderColor:active?color:T.line,backgroundColor:active?bg:T.surface,opacity:pressed?0.86:unavailable?0.72:1},
         ]}>
-          <View style={[s.graphNodeDot,{backgroundColor:color}]}/><Text style={s.graphNodeLabel} numberOfLines={1}>{node.label}</Text><Text style={s.graphNodeMeta} numberOfLines={1}>{node.zone}{node.vlan?` · V${node.vlan}`:''}</Text>
+          <View style={[s.graphNodeDot,{backgroundColor:color}]}/><Text style={s.graphNodeLabel} numberOfLines={1}>{node.label}</Text><Text style={s.graphNodeMeta} numberOfLines={1}>{unavailable?'SIMULATED DOWN':failureNode?'AFFECTED':node.zone+(node.vlan?` · V${node.vlan}`:'')}</Text>
         </Pressable>;
       })}
     </View>
@@ -509,18 +613,72 @@ function InteractiveTwinGraph({digitalTwin,intent}:{digitalTwin:DigitalTwin|null
     {selectedNode&&<View style={s.assetInspector}>
       <View style={s.assetInspectorHead}><View style={{flex:1}}><Text style={s.micro}>SELECTED ASSET</Text><Text style={s.assetTitle}>{selectedNode.label}</Text><Text style={s.assetMeta}>{selectedNode.ip||selectedNode.managementIp||'No IP'} · {selectedNode.zone} · {selectedNode.trustTier}</Text></View>{selectedNode.critical&&<View style={[s.badge,{backgroundColor:T.violetSoft}]}><Icon name="shield" size={12} color={T.violet}/><Text style={[s.sectionAction,{color:T.violet}]}>PROTECTED</Text></View>}</View>
       <View style={s.assetFacts}><View style={s.assetFact}><Text style={s.assetFactLabel}>TYPE</Text><Text style={s.assetFactValue}>{selectedNode.assetType}</Text></View><View style={s.assetFact}><Text style={s.assetFactLabel}>INTERFACE</Text><Text style={s.assetFactValue}>{selectedNode.interface||'n/a'}</Text></View><View style={s.assetFact}><Text style={s.assetFactLabel}>TRUST</Text><Text style={s.assetFactValue}>{selectedNode.trustTier}</Text></View></View>
-      <View style={s.graphControls}><Pressable onPress={()=>setMode('neighbors')} style={[s.graphControl,mode==='neighbors'&&{backgroundColor:T.mintSoft,borderColor:T.mint+'55'}]}><Icon name="share-2" size={12} color={T.mint}/><Text style={s.graphControlText}>Neighbors</Text></Pressable><Pressable onPress={()=>{setPathTarget(selectedNode.label==='SERVER'?'ATTACKER-PC':'SERVER');setMode('path');}} style={[s.graphControl,mode==='path'&&{backgroundColor:T.violetSoft,borderColor:T.violet+'55'}]}><Icon name="git-branch" size={12} color={T.violet}/><Text style={s.graphControlText}>{selectedNode.label==='SERVER'?'Path to ATTACKER':'Path to SERVER'}</Text></Pressable><Pressable onPress={()=>setMode('blast')} style={[s.graphControl,mode==='blast'&&{backgroundColor:T.amberSoft,borderColor:T.amber+'55'}]}><Icon name="radio" size={12} color={T.amber}/><Text style={s.graphControlText}>Blast radius</Text></Pressable></View>
-      <View style={s.graphInsight}><Icon name="info" size={13} color={T.blue}/><Text style={s.graphInsightText}>{modeText}</Text></View>
+      <View style={s.graphControls}>
+        <Pressable onPress={()=>setMode('neighbors')} style={[s.graphControl,mode==='neighbors'&&{backgroundColor:T.mintSoft,borderColor:T.mint+'55'}]}><Icon name="share-2" size={12} color={T.mint}/><Text style={s.graphControlText}>Neighbors</Text></Pressable>
+        <Pressable onPress={()=>{setPathTarget(selectedNode.label==='SERVER'?'ATTACKER-PC':'SERVER');setMode('path');}} style={[s.graphControl,mode==='path'&&{backgroundColor:T.violetSoft,borderColor:T.violet+'55'}]}><Icon name="git-branch" size={12} color={T.violet}/><Text style={s.graphControlText}>{selectedNode.label==='SERVER'?'Path to attacker':'Path to server'}</Text></Pressable>
+        <Pressable onPress={()=>setMode('blast')} style={[s.graphControl,mode==='blast'&&{backgroundColor:T.amberSoft,borderColor:T.amber+'55'}]}><Icon name="radio" size={12} color={T.amber}/><Text style={s.graphControlText}>Blast radius</Text></Pressable>
+        <Pressable onPress={()=>setMode('failure')} style={[s.graphControl,mode==='failure'&&{backgroundColor:T.coralSoft,borderColor:T.coral+'55'}]}><Icon name="power" size={12} color={T.coral}/><Text style={s.graphControlText}>What-if down</Text></Pressable>
+        <Pressable onPress={()=>setMode('confidence')} style={[s.graphControl,mode==='confidence'&&{backgroundColor:T.amberSoft,borderColor:T.amber+'55'}]}><Icon name="layers" size={12} color={T.amber}/><Text style={s.graphControlText}>Evidence layer</Text></Pressable>
+      </View>
+      <View style={s.graphInsight}><Icon name="info" size={13} color={mode==='failure'?T.coral:mode==='confidence'?T.amber:mode==='policy'?T.blue:T.blue}/><Text style={s.graphInsightText}>{modeText}</Text></View>
     </View>}
   </View>;
 }
 
+function FabricOperationsLab({digitalTwin,onIntent}:{digitalTwin:DigitalTwin|null;onIntent:(intent:Exclude<TwinIntent,null>)=>void}) {
+  const {T,s}=useTheme();
+  if(!digitalTwin?.operations) return null;
+  const ops=digitalTwin.operations;
+  const attention=ops.attention.slice(0,3);
+  const spof=ops.singlePointsOfFailure.slice(0,3);
+  const audit=ops.confidenceAudit;
+  return <View style={s.opsLab}>
+    <View style={s.opsLabHead}><View><Text style={s.eyebrow}>OPERATIONS LAB</Text><Text style={s.opsTitle}>Ask “what if?” before touching the network</Text></View><View style={[s.badge,{backgroundColor:T.blueSoft}]}><Icon name="sliders" size={11} color={T.blue}/><Text style={[s.sectionAction,{color:T.blue}]}>5 TOOLS</Text></View></View>
+    <Text style={s.opsIntro}>These tools analyse the current graph, trust zones and evidence quality. They do not execute configuration or claim unverified packet reachability.</Text>
+
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.opsQuickRow}>
+      <Pressable onPress={()=>onIntent({type:'path',source:'ATTACKER-PC',target:'SERVER',nonce:Date.now()})} style={[s.opsQuick,{backgroundColor:T.coralSoft,borderColor:T.coral+'44'}]}><Icon name="git-branch" size={13} color={T.coral}/><Text style={s.opsQuickText}>ATTACKER → SERVER</Text></Pressable>
+      <Pressable onPress={()=>onIntent({type:'failure',asset:'CORE-SW',nonce:Date.now()})} style={[s.opsQuick,{backgroundColor:T.amberSoft,borderColor:T.amber+'44'}]}><Icon name="power" size={13} color={T.amber}/><Text style={s.opsQuickText}>CORE FAILURE</Text></Pressable>
+      <Pressable onPress={()=>onIntent({type:'confidence',nonce:Date.now()})} style={[s.opsQuick,{backgroundColor:T.blueSoft,borderColor:T.blue+'44'}]}><Icon name="layers" size={13} color={T.blue}/><Text style={s.opsQuickText}>EVIDENCE AUDIT</Text></Pressable>
+    </ScrollView>
+
+    <View style={s.opsGrid}>
+      <View style={s.opsPanel}>
+        <View style={s.opsPanelHead}><View style={[s.opsPanelIcon,{backgroundColor:T.coralSoft}]}><Icon name="target" size={14} color={T.coral}/></View><View style={{flex:1}}><Text style={s.opsPanelKicker}>ATTENTION QUEUE</Text><Text style={s.opsPanelTitle}>Assets worth reviewing</Text></View></View>
+        {attention.map((item,index)=><Pressable key={item.id} onPress={()=>onIntent({type:'focus',asset:item.label,nonce:Date.now()})} style={[s.opsRow,index<attention.length-1&&s.divider]}><View style={[s.opsScore,{backgroundColor:item.score>=50?T.coralSoft:item.score>=25?T.amberSoft:T.surface3}]}><Text style={[s.opsScoreText,{color:item.score>=50?T.coral:item.score>=25?T.amber:T.muted}]}>{item.score}</Text></View><View style={{flex:1}}><Text style={s.opsRowTitle}>{item.label}</Text><Text style={s.opsRowMeta} numberOfLines={1}>{item.reasons.join(' · ')||'context only'}</Text></View><Icon name="crosshair" size={12} color={T.faint}/></Pressable>)}
+      </View>
+
+      <View style={s.opsPanel}>
+        <View style={s.opsPanelHead}><View style={[s.opsPanelIcon,{backgroundColor:T.amberSoft}]}><Icon name="activity" size={14} color={T.amber}/></View><View style={{flex:1}}><Text style={s.opsPanelKicker}>RESILIENCE</Text><Text style={s.opsPanelTitle}>Single points of failure</Text></View></View>
+        {spof.length?spof.map((item,index)=><Pressable key={item.id} onPress={()=>onIntent({type:'failure',asset:item.label,nonce:Date.now()})} style={[s.opsRow,index<spof.length-1&&s.divider]}><View style={[s.opsSmallIcon,{backgroundColor:T.amberSoft}]}><Icon name="power" size={12} color={T.amber}/></View><View style={{flex:1}}><Text style={s.opsRowTitle}>{item.label}</Text><Text style={s.opsRowMeta}>{item.separatedAssets.length} graph-separated asset(s){item.criticalSeparated.length?` · ${item.criticalSeparated.length} protected`:''}</Text></View><Icon name="chevron-right" size={12} color={T.faint}/></Pressable>):<Text style={s.opsEmpty}>No articulation point detected in the current graph.</Text>}
+      </View>
+
+      <View style={s.opsPanel}>
+        <View style={s.opsPanelHead}><View style={[s.opsPanelIcon,{backgroundColor:T.blueSoft}]}><Icon name="shield" size={14} color={T.blue}/></View><View style={{flex:1}}><Text style={s.opsPanelKicker}>SEGMENTATION</Text><Text style={s.opsPanelTitle}>Policy relationship checks</Text></View></View>
+        {ops.policyChecks.map((item,index)=><Pressable key={item.id} onPress={()=>onIntent({type:'policy',sourceZone:item.sourceZone,targetZone:item.targetZone,nonce:Date.now()})} style={[s.opsRow,index<ops.policyChecks.length-1&&s.divider]}><View style={[s.opsSmallIcon,{backgroundColor:item.relationshipPath?T.amberSoft:T.mintSoft}]}><Icon name={item.relationshipPath?'alert-circle':'check-circle'} size={12} color={item.relationshipPath?T.amber:T.mint}/></View><View style={{flex:1}}><Text style={s.opsRowTitle}>{item.sourceZone} → {item.targetZone}</Text><Text style={s.opsRowMeta}>Expected {item.expectation} · enforcement {item.verification}</Text></View><Icon name="eye" size={12} color={T.faint}/></Pressable>)}
+      </View>
+
+      <Pressable onPress={()=>onIntent({type:'confidence',nonce:Date.now()})} style={s.opsPanel}>
+        <View style={s.opsPanelHead}><View style={[s.opsPanelIcon,{backgroundColor:T.violetSoft}]}><Icon name="layers" size={14} color={T.violet}/></View><View style={{flex:1}}><Text style={s.opsPanelKicker}>EVIDENCE QUALITY</Text><Text style={s.opsPanelTitle}>Relationship confidence</Text></View></View>
+        <View style={s.confidenceBars}>
+          {[['Observed',audit.observed,T.mint],['Known lab',audit.knownLab,T.blue],['Inferred',audit.inferred,T.amber]].map(([label,value,color])=><View key={String(label)} style={s.confidenceBarRow}><Text style={s.confidenceBarLabel}>{label}</Text><View style={s.confidenceBarTrack}><View style={[s.confidenceBarFill,{width:(Math.max(5,Number(value)/Math.max(1,audit.totalLinks)*100)+'%') as any,backgroundColor:String(color)}]}/></View><Text style={s.confidenceBarValue}>{value}</Text></View>)}
+        </View>
+        {!!audit.weakLinks.length&&<Text style={s.opsFoot}>{audit.weakLinks.length} inferred link(s) can be highlighted on the graph.</Text>}
+      </Pressable>
+    </View>
+  </View>;
+}
+
 function Fabric({topology,digitalTwin,incidentMode,setIncidentMode,intent}:{topology:NetworkTopology|null;digitalTwin:DigitalTwin|null;incidentMode:boolean;setIncidentMode:(v:boolean)=>void;intent:TwinIntent}) {
-  const {T,s}=useTheme(); const hosts=topology?.nodes.filter(n=>n.kind==='host')||[];
+  const {T,s}=useTheme();
+  const hosts=topology?.nodes.filter(n=>n.kind==='host')||[];
+  const [localIntent,setLocalIntent]=useState<TwinIntent>(intent);
+  useEffect(()=>{if(intent)setLocalIntent(intent);},[intent?.nonce]);
   return <View style={s.page}>
     <SectionHead eyebrow="FABRIC" title="Interactive digital twin" action={<Pressable onPress={()=>setIncidentMode(!incidentMode)} style={s.modeButton}><Icon name="zap" size={12} color={incidentMode?T.coral:T.text}/><Text style={[s.modeText,incidentMode&&{color:T.coral}]}>{incidentMode?'Incident focus':'Trace mode'}</Text></Pressable>}/>
     <TwinSummary digitalTwin={digitalTwin}/>
-    <InteractiveTwinGraph digitalTwin={digitalTwin} intent={intent}/>
+    <InteractiveTwinGraph digitalTwin={digitalTwin} intent={localIntent}/>
+    <FabricOperationsLab digitalTwin={digitalTwin} onIntent={setLocalIntent}/>
     <Text style={s.micro}>ENDPOINT INVENTORY</Text><View style={s.hostList}>{hosts.map(h=>{const danger=h.role==='attacker'||h.zone==='GUEST';const service=['SERVER','PUBLIC','MANAGEMENT'].includes(h.zone);const color=danger?T.coral:service?T.violet:T.mint;const bg=danger?T.coralSoft:service?T.violetSoft:T.mintSoft;return <View key={h.id} style={[s.hostRow,danger&&incidentMode&&{borderColor:T.coral+'66'}]}><View style={[s.hostIcon,{backgroundColor:bg}]}><Icon name={danger?'alert-triangle':'monitor'} size={15} color={color}/></View><View style={{flex:1}}><Text style={s.hostName}>{h.label}</Text><Text style={s.hostMeta}>{h.ip} · {h.zone} · {h.trust||'unknown'}</Text></View>{!!h.vlan&&<View style={[s.vlanPill,{backgroundColor:bg}]}><Text style={[s.vlanText,{color}]}>VLAN {h.vlan}</Text></View>}</View>})}</View>
   </View>;
 }
@@ -581,7 +739,7 @@ function AnswerSections({text}:{text:string}) {
 
 function Agent({live,serverHealth,busy,prompt,setPrompt,run,onSubmit,onAction}:{live:boolean;serverHealth:Health|null;busy:boolean;prompt:string;setPrompt:(v:string)=>void;run:AgentRun|null;onSubmit:()=>void;onAction:(action:NonNullable<AgentRun['actions']>[number])=>void}) {
   const {T,s}=useTheme(); const [trace,setTrace]=useState(false); const working=!!run&&['thinking','resuming'].includes(run.status);
-  const quick=['Review my network health','Can ATTACKER-PC reach SERVER?','What is connected to CORE-SW?','Show the blast radius of CORE-SW'];
+  const quick=['Review my network health','Can ATTACKER-PC reach SERVER?','What is connected to CORE-SW?','What if CORE-SW goes down?','Are GUEST and SERVER isolated?','Show alternate paths from ATTACKER-PC to SERVER'];
   const tone=(value:string)=>value==='danger'?T.coral:value==='amber'?T.amber:value==='mint'?T.mint:value==='violet'?T.violet:T.blue;
   return <View style={s.page}>
     <SectionHead eyebrow="NEXUS AI" title="Topology-aware assistant" action={<View style={[s.contextPill,{backgroundColor:live?T.mintSoft:T.surface2}]}><View style={[s.statusDot,{backgroundColor:live?T.mint:T.faint}]}/><Text style={s.contextText}>{live?'LIVE CONTEXT':'NO CONTEXT'}</Text></View>}/>
@@ -697,8 +855,11 @@ function Experience(props:Props) {
     const nonce=Date.now();
     if(action.type==='focus-twin' && action.payload.asset) setTwinIntent({type:'focus',asset:action.payload.asset,nonce});
     if(action.type==='show-blast-radius' && action.payload.asset) setTwinIntent({type:'blast',asset:action.payload.asset,nonce});
+    if(action.type==='show-failure-impact' && action.payload.asset) setTwinIntent({type:'failure',asset:action.payload.asset,nonce});
+    if(action.type==='show-confidence') setTwinIntent({type:'confidence',nonce});
+    if(action.type==='show-policy' && action.payload.sourceZone && action.payload.targetZone) setTwinIntent({type:'policy',sourceZone:action.payload.sourceZone,targetZone:action.payload.targetZone,nonce});
     if(action.type==='show-path' && action.payload.source && action.payload.target) setTwinIntent({type:'path',source:action.payload.source,target:action.payload.target,nonce});
-    if(['focus-twin','show-blast-radius','show-path'].includes(action.type)) setPage('topology');
+    if(['focus-twin','show-blast-radius','show-failure-impact','show-confidence','show-policy','show-path'].includes(action.type)) setPage('topology');
   }
 
   useEffect(()=>{if(page!=='agent'||!run)return;const t=setTimeout(()=>scrollRef.current?.scrollToEnd({animated:true}),180);return()=>clearTimeout(t);},[page,run?.status,run?.answer,run?.events.length]);

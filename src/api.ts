@@ -1,4 +1,4 @@
-import { AgentRun, BlastRadius, DefensiveAction, DemoScenario, DigitalTwin, Health, IncidentCase, IncidentTimeline, NetworkDevice, NetworkHealth, NetworkHost, NetworkTopology, PathAnalysis, SecurityAnalysis, TelemetrySnapshot } from './types';
+import { AgentRun, BlastRadius, DefensiveAction, DemoScenario, DigitalTwin, FailureImpact, Health, IncidentCase, IncidentTimeline, NetworkDevice, NetworkHealth, NetworkHost, NetworkTopology, PathAnalysis, PolicyAudit, ResiliencePaths, SecurityAnalysis, TelemetrySnapshot } from './types';
 
 export const defaultEndpoint = () => {
   if (typeof window !== 'undefined' && window.location?.protocol?.startsWith('http')) {
@@ -41,6 +41,9 @@ export const getDigitalTwin = (base:string, token:string) => request<DigitalTwin
 export const analyzePath = (base:string, token:string, source:string, target:string) => request<PathAnalysis>(base, '/api/network/path', token, 'POST', { source, target });
 export const getBlastRadius = (base:string, token:string, asset:string, depth=3) => request<BlastRadius>(base, '/api/network/blast-radius', token, 'POST', { asset, depth });
 export const getConnectedAssets = (base:string, token:string, asset:string) => request<{ found:boolean; asset:unknown; neighbors:unknown[]; generatedAt:string }>(base, '/api/network/connected-assets', token, 'POST', { asset });
+export const getFailureImpact = (base:string, token:string, asset:string) => request<FailureImpact>(base, '/api/network/failure-impact', token, 'POST', { asset });
+export const getResiliencePaths = (base:string, token:string, source:string, target:string, maxPaths=3) => request<ResiliencePaths>(base, '/api/network/resilience-paths', token, 'POST', { source, target, maxPaths });
+export const getPolicyAudit = (base:string, token:string) => request<PolicyAudit>(base, '/api/network/policy-audit', token);
 
 export const getIncidents = (base: string, token: string) => request<IncidentTimeline>(base, '/api/incidents', token);
 export const getIncidentCases = (base: string, token: string) => request<{ cases: IncidentCase[] }>(base, '/api/incidents/cases', token);
