@@ -111,6 +111,19 @@ export function createServer({
         if (!asset) throw new Error('Asset is required');
         return json(res, 200, await digitalTwin.connectedTo(asset), origin);
       }
+      if (url.pathname === '/api/network/failure-impact' && req.method === 'POST') {
+        const { asset } = await body(req);
+        if (!asset) throw new Error('Asset is required');
+        return json(res, 200, await digitalTwin.failureImpact(asset), origin);
+      }
+      if (url.pathname === '/api/network/resilience-paths' && req.method === 'POST') {
+        const { source, target, maxPaths } = await body(req);
+        if (!source || !target) throw new Error('Source and target are required');
+        return json(res, 200, await digitalTwin.resiliencePaths(source, target, maxPaths), origin);
+      }
+      if (url.pathname === '/api/network/policy-audit' && req.method === 'GET') {
+        return json(res, 200, await digitalTwin.policyAudit(), origin);
+      }
       if (url.pathname === '/api/incidents' && req.method === 'GET') return json(res, 200, await incidents.getTimeline(), origin);
       if (url.pathname === '/api/incidents/cases' && req.method === 'GET') return json(res, 200, { cases: incidents.listCases() }, origin);
       const openIncidentMatch = url.pathname.match(/^\/api\/incidents\/([^/]+)\/open$/);
