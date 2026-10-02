@@ -3,12 +3,12 @@ export type AgentEvent = { id: string; kind: EventKind; title: string; detail: s
 export type AgentEvidence = { tool: string; summary: string; at: string };
 export type AgentAction = {
   id:string;
-  type:'open-incident'|'show-path'|'show-blast-radius'|'focus-twin'|'ask';
+  type:'open-incident'|'show-path'|'show-blast-radius'|'show-failure-impact'|'show-policy'|'show-confidence'|'focus-twin'|'ask';
   label:string;
   description:string;
   icon:string;
   tone:'danger'|'violet'|'amber'|'mint'|'neutral';
-  payload:{ alertId?:string; source?:string; target?:string; asset?:string; prompt?:string };
+  payload:{ alertId?:string; source?:string; target?:string; asset?:string; prompt?:string; sourceZone?:string; targetZone?:string };
 };
 export type AgentRun = {
   id: string;
