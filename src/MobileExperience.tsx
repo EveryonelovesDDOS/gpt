@@ -599,7 +599,7 @@ function InteractiveTwinGraph({digitalTwin,intent}:{digitalTwin:DigitalTwin|null
         const color=unavailable?T.coral:failureNode?T.amber:weak?T.amber:danger?T.coral:critical?T.violet:node.kind==='device'?T.blue:T.mint;
         const bg=unavailable?T.coralSoft:failureNode?T.amberSoft:weak?T.amberSoft:danger?T.coralSoft:critical?T.violetSoft:node.kind==='device'?T.blueSoft:T.mintSoft;
         return <Pressable key={node.id} onPress={()=>{setSelected(node.id);setMode('focus');}} style={({pressed})=>[
-          s.graphNode,{left:p.x*width-nodeW/2,top:p.y*canvasHeight-nodeH/2,width:nodeW,minHeight:nodeH,borderColor:active?color:T.line,backgroundColor:active?bg:T.surface,opacity:pressed?0.86:unavailable?.72:1},
+          s.graphNode,{left:p.x*width-nodeW/2,top:p.y*canvasHeight-nodeH/2,width:nodeW,minHeight:nodeH,borderColor:active?color:T.line,backgroundColor:active?bg:T.surface,opacity:pressed?0.86:unavailable?0.72:1},
         ]}>
           <View style={[s.graphNodeDot,{backgroundColor:color}]}/><Text style={s.graphNodeLabel} numberOfLines={1}>{node.label}</Text><Text style={s.graphNodeMeta} numberOfLines={1}>{unavailable?'SIMULATED DOWN':failureNode?'AFFECTED':node.zone+(node.vlan?` · V${node.vlan}`:'')}</Text>
         </Pressable>;
