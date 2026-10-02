@@ -292,7 +292,7 @@ function Header({live,themeMode,onToggleTheme,onConnect,onRefresh,onDemo}:{live:
   return <View style={s.header}>
     <View style={s.brandRow}>
       <LinearGradient colors={[T.mint,T.violet]} start={{x:0,y:0}} end={{x:1,y:1}} style={s.logo}><Text style={s.logoText}>N</Text></LinearGradient>
-      <View><Text style={s.brand}>NEXUS</Text><Text style={s.brandSub}>V12 · DEMO ENGINE</Text></View>
+      <View><Text style={s.brand}>NEXUS</Text><Text style={s.brandSub}>V13 · OPERATIONS LAB</Text></View>
     </View>
     <View style={s.headerActions}>
       <Pressable onPress={onRefresh} style={[s.livePill,{backgroundColor:live?T.mintSoft:T.surface2}]}>
@@ -739,7 +739,7 @@ function AnswerSections({text}:{text:string}) {
 
 function Agent({live,serverHealth,busy,prompt,setPrompt,run,onSubmit,onAction}:{live:boolean;serverHealth:Health|null;busy:boolean;prompt:string;setPrompt:(v:string)=>void;run:AgentRun|null;onSubmit:()=>void;onAction:(action:NonNullable<AgentRun['actions']>[number])=>void}) {
   const {T,s}=useTheme(); const [trace,setTrace]=useState(false); const working=!!run&&['thinking','resuming'].includes(run.status);
-  const quick=['Review my network health','Can ATTACKER-PC reach SERVER?','What is connected to CORE-SW?','Show the blast radius of CORE-SW'];
+  const quick=['Review my network health','Can ATTACKER-PC reach SERVER?','What is connected to CORE-SW?','What if CORE-SW goes down?','Are GUEST and SERVER isolated?','Show alternate paths from ATTACKER-PC to SERVER'];
   const tone=(value:string)=>value==='danger'?T.coral:value==='amber'?T.amber:value==='mint'?T.mint:value==='violet'?T.violet:T.blue;
   return <View style={s.page}>
     <SectionHead eyebrow="NEXUS AI" title="Topology-aware assistant" action={<View style={[s.contextPill,{backgroundColor:live?T.mintSoft:T.surface2}]}><View style={[s.statusDot,{backgroundColor:live?T.mint:T.faint}]}/><Text style={s.contextText}>{live?'LIVE CONTEXT':'NO CONTEXT'}</Text></View>}/>
