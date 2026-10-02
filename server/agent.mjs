@@ -12,7 +12,10 @@ NETWORK RULES
 - Never imply a configuration change was executed unless an execution tool reports success.
 - For questions such as "can A reach B?", use analyze_network_path when possible and clearly distinguish relationship-path evidence from verified IP reachability.
 - For "what is connected to X?" use get_connected_assets when possible.
-- For blast-radius/impact questions, use get_blast_radius and state that graph adjacency is not proof of compromise propagation.
+- For blast-radius questions, use get_blast_radius and state that graph adjacency is not proof of compromise propagation.
+- For what-if outage/failure questions, use simulate_asset_failure. It is a graph simulation only and never changes a device.
+- For redundancy/alternate-path questions, use get_resilience_paths and state that relationship paths are not verified routing paths.
+- For segmentation/isolation policy questions, use audit_segmentation_policy and keep enforcement explicitly unverified unless controller evidence proves it.
 - Prefer the digital twin for relationship questions; prefer controller observations for live state.
 - If policy enforcement cannot be verified from controller data, say so plainly.
 - File writes require explicit approval.
@@ -82,6 +85,19 @@ function summarizeTool(name, result) {
         ? `${data.asset?.label} has ${data.neighbors?.length || 0} directly connected assets in the digital twin.`
         : `Connected-assets lookup could not find ${data.asset}.`;
     }
+    if (name === 'simulate_asset_failure') {
+      return data.found
+        ? `What-if outage for ${data.asset?.label}: ${data.affected?.length || 0} graph-separated assets, ${data.criticalAffected?.length || 0} protected assets; severity ${data.severity || 'unknown'}.`
+        : `What-if outage asset not found: ${data.asset}.`;
+    }
+    if (name === 'get_resilience_paths') {
+      return data.found
+        ? `${data.source} → ${data.target}: ${data.pathCount || data.paths?.length || 0} relationship path(s); redundancy ${data.redundancy || 'unknown'}.`
+        : `No current relationship path found between ${data.source} and ${data.target}.`;
+    }
+    if (name === 'audit_segmentation_policy') {
+      return `Segmentation policy audit: ${data.checks?.length || 0} expectation(s); enforcement confidence ${data.confidence || 'unknown'}.`;
+    }
     if (name === 'list_files') return `${Array.isArray(data) ? data.length : 0} workspace documents found.`;
     if (name === 'search_files') return `${Array.isArray(data) ? data.length : 0} matching lines found.`;
     if (name === 'read_file') return 'Workspace document read successfully.';
@@ -100,6 +116,24 @@ function mentionedAssets(prompt) {
 function preloadPlan(prompt) {
   const p = prompt.toLowerCase();
   const assets=mentionedAssets(prompt);
+  if (/(what if|fails|failure|offline|goes down|unavailable|outage|down impact|故障|宕机|离线)/.test(p) && assets[0]) {
+    return [
+      { name:'get_network_digital_twin', args:{} },
+      { name:'simulate_asset_failure', args:{ asset:assets[0] } },
+    ];
+  }
+  if (/(redundan|resilien|alternate path|backup path|single point|备用路径|冗余|单点)/.test(p) && assets.length >= 2) {
+    return [
+      { name:'get_network_digital_twin', args:{} },
+      { name:'get_resilience_paths', args:{ source:assets[0], target:assets[1], maxPaths:3 } },
+    ];
+  }
+  if (/(segment|segmentation|isolation|isolated|policy|acl|隔离|策略|分段)/.test(p)) {
+    return [
+      { name:'get_network_digital_twin', args:{} },
+      { name:'audit_segmentation_policy', args:{} },
+    ];
+  }
   if (/blast|impact|affected|dependency|radius|影响|波及/.test(p) && assets[0]) {
     return [
       { name:'get_network_digital_twin', args:{} },
@@ -122,7 +156,7 @@ function preloadPlan(prompt) {
   if (/attacker|intruder|guest|where is|位于|攻击/.test(p)) return [{name:'get_network_hosts',args:{}},{name:'get_security_analysis',args:{}}];
   if (/device|inventory|discovered|设备|清单/.test(p)) return [{name:'get_network_devices',args:{}}];
   if (/alert|security|risk|threat|安全|风险|告警/.test(p)) return [{name:'get_security_analysis',args:{}},{name:'get_network_topology',args:{}}];
-  if (/topology|fabric|vlan|segment|拓扑|网络/.test(p)) return [{name:'get_network_digital_twin',args:{}},{name:'get_security_analysis',args:{}}];
+  if (/topology|fabric|vlan|network|拓扑|网络/.test(p)) return [{name:'get_network_digital_twin',args:{}},{name:'get_security_analysis',args:{}}];
   return [];
 }
 
@@ -132,6 +166,9 @@ function buildActionCards(run) {
   const path=run.context.analyze_network_path;
   const blast=run.context.get_blast_radius;
   const connected=run.context.get_connected_assets;
+  const failure=run.context.simulate_asset_failure;
+  const resilience=run.context.get_resilience_paths;
+  const policyAudit=run.context.audit_segmentation_policy;
   const twin=run.context.get_network_digital_twin;
   const topAlert=security?.alerts?.find?.(alert=>['critical','high'].includes(alert.severity)) || security?.alerts?.[0];
 
@@ -171,6 +208,36 @@ function buildActionCards(run) {
     tone:'mint',
     payload:{ asset:connected.asset?.label },
   });
+  if (failure?.found) cards.push({
+    id:`failure:${failure.asset?.label || failure.asset}`,
+    type:'show-failure-impact',
+    label:'Show what-if outage',
+    description:`${failure.affected?.length || 0} graph-separated assets · simulation only.`,
+    icon:'power',
+    tone:'danger',
+    payload:{ asset:failure.asset?.label || failure.asset },
+  });
+  if (resilience?.found) cards.push({
+    id:`resilience:${resilience.source}:${resilience.target}`,
+    type:'show-path',
+    label:'Show resilience path',
+    description:`${resilience.pathCount || 0} relationship path(s) · ${resilience.redundancy || 'unknown'} redundancy.`,
+    icon:'shuffle',
+    tone:'violet',
+    payload:{ source:resilience.source, target:resilience.target },
+  });
+  if (policyAudit?.checks?.length) {
+    const first=policyAudit.checks[0];
+    cards.push({
+      id:`policy:${first.id}`,
+      type:'show-policy',
+      label:'Open policy overlay',
+      description:`${first.sourceZone} → ${first.targetZone} · enforcement ${first.verification}.`,
+      icon:'shield',
+      tone:'amber',
+      payload:{ sourceZone:first.sourceZone, targetZone:first.targetZone },
+    });
+  }
   if (!cards.some(card=>card.type==='focus-twin') && twin?.nodes?.length) {
     const marker=twin.nodes.find(node=>node.labThreatMarker);
     if(marker) cards.push({
@@ -217,6 +284,70 @@ function synthesizeFinal(prompt, context) {
   const pathAnalysis = context.analyze_network_path;
   const blastRadius = context.get_blast_radius;
   const connected = context.get_connected_assets;
+  const failureImpact = context.simulate_asset_failure;
+  const resilience = context.get_resilience_paths;
+  const policyAudit = context.audit_segmentation_policy;
+
+  if (failureImpact) {
+    const affected=(failureImpact.affected || []).map(a=>a.label).join(', ') || 'none';
+    const protectedAssets=(failureImpact.criticalAffected || []).map(a=>a.label).join(', ') || 'none';
+    return `OBSERVED
+- What-if asset: ${failureImpact.asset?.label || failureImpact.asset}.
+- Graph-separated assets if it becomes unavailable: ${affected}.
+- Protected assets in the simulated impact set: ${protectedAssets}.
+
+INFERRED
+This suggests a ${failureImpact.severity || 'review'} graph-dependency impact if that asset is unavailable.
+
+RISK
+The result identifies structural dependency, not proven packet loss or a real outage.
+
+NEXT CHECKS
+1. Review alternate relationships or redundancy.
+2. Verify the affected services from live controller observations if an outage actually occurs.
+
+CONFIDENCE
+Medium — deterministic graph simulation; no device was changed.`;
+  }
+
+  if (resilience) {
+    const paths=(resilience.paths || []).map(path=>`- ${path.hops.join(' → ')}`).join('\n') || '- No graph relationship path found.';
+    return `OBSERVED
+${paths}
+- Relationship redundancy: ${resilience.redundancy || 'unknown'}.
+
+INFERRED
+${resilience.redundancy==='single'?'Only one relationship path is represented, so the graph has no represented alternate for this pair.':resilience.redundancy==='multiple'?'Multiple relationship paths are represented in the current twin.':'No represented relationship path exists for this pair.'}
+
+RISK
+Relationship redundancy is not the same as routing convergence or verified forwarding redundancy.
+
+NEXT CHECKS
+1. Verify routing and interface state where controller data is available.
+2. Test the relevant service path separately if required.
+
+CONFIDENCE
+Medium — graph relationships are certainty-labelled, but forwarding is not proven.`;
+  }
+
+  if (policyAudit) {
+    const checks=(policyAudit.checks || []).map(check=>`- ${check.sourceZone} → ${check.targetZone}: expected ${check.expectation}; graph relationship ${check.relationshipPath?'present':'not found'}; enforcement ${check.verification}.`).join('\n');
+    return `OBSERVED
+${checks || '- No segmentation policy checks are configured.'}
+
+INFERRED
+The digital twin can compare intended isolation with represented relationships, but it cannot infer ACL enforcement from graph structure alone.
+
+RISK
+Any protected-zone isolation marked not-verified should be validated before relying on it.
+
+NEXT CHECKS
+1. Inspect ACL/routing state if Packet Tracer exposes it.
+2. Validate the relevant source and destination VLANs.
+
+CONFIDENCE
+Medium — policy intent is known; enforcement remains ${policyAudit.confidence || 'not-verified'}.`;
+  }
 
   if (pathAnalysis) {
     const hopText=(pathAnalysis.hops || []).map(h=>h.node?.label).filter(Boolean).join(' → ');
